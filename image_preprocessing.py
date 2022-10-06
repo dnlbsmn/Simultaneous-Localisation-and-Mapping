@@ -44,7 +44,7 @@ def process_debug(image_path):
     cv.imshow('map', maze)
     cv.waitKey(0)
 
-    cv.imwrite("processed_maze.png", maze)
+    return maze
 
     cv.destroyAllWindows()
 
@@ -55,7 +55,7 @@ def process(image_path):
     cv.namedWindow('map', cv.WINDOW_NORMAL)
     cv.resizeWindow('map', 600, 600)
     
-    thresh, maze = cv.threshold(maze, 140, 255, cv.THRESH_BINARY_INV)
+    thresh, maze = cv.threshold(maze, 140, 255, cv.THRESH_BINARY)
     maze = cv.cvtColor(maze, cv.COLOR_BGR2GRAY)
 
     kernel = np.ones((71, 71), dtype = 'uint8')
@@ -64,5 +64,6 @@ def process(image_path):
     maze = cv.resize(maze, (300, 300), interpolation = 2)
 
     thresh, maze = cv.threshold(maze, 100, 255, cv.THRESH_BINARY)
-    cv.imwrite("processed_maze.png", maze)
+    
+    return maze
 
