@@ -1,6 +1,5 @@
 import cv2 as cv
 import numpy as np
-import image_preprocessing
 
 ### =============================================== ###
 # CONSTANTS
@@ -174,10 +173,10 @@ def path_cell(point):
 ### =============================================== ###
 # MAIN CODE INITIALISATION
 
-def load_map(image_path):
+def load_map(maze_in):
     global maze, maze_matrix, maze_height, maze_width, classes, path_array, h_costs, g_costs
-
-    maze_matrix = image_preprocessing.process(image_path)
+	
+    maze_matrix = maze_in
     maze = cv.cvtColor(maze_matrix, cv.COLOR_GRAY2BGR)
 
     cv.namedWindow('map', cv.WINDOW_NORMAL)
