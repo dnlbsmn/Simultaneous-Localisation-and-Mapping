@@ -83,9 +83,5 @@ def convert_path_to_vectors(path, start, UI_mode): # map array, start[x,y], UI_m
 
 ### =========================================== ###
 # EXAMPLE INPUT
-path = cv.imread("path_array.png")
-path = cv.cvtColor(path, cv.COLOR_BGR2GRAY)
-start = [123, 118]
 
-convert_path_to_vectors(path, start, 1)
 

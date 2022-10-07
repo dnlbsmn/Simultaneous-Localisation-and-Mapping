@@ -74,4 +74,4 @@ def run(image, start, end, ui_mode = 0):
 		cv.waitKey(0)
 		cv.destroyAllWindows()
 		
-	return ASL.path_array
+	return ASL.path_array, ASL.start
