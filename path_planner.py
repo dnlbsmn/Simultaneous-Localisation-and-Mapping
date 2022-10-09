@@ -81,7 +81,39 @@ def convert_path_to_vectors(path, start, UI_mode): # map array, start[x,y], UI_m
 	vectors = path_to_vector(path, start, UI_mode)
 	return vectors
 
-### =========================================== ###
-# EXAMPLE INPUT
+def merge_vectors(vectors, path): 
+	print(vectors)
+	vectors_merged = []
+	end = [0, 0]
+	clear_flag = False
+	for v_index in range(len(vectors)- 1):
+		print(v_index)
+		# If this vector was merged on last iteration, skip to next vector
+		if (clear_flag): 
+			print(skipped)
+			clear_flag = False
+			break
+
+
+		if (vectors[v_index][1] != 0):
+			end[0] = vectors[v_index+1][0][0] + (vectors[v_index+1][1] * math.sin(vectors[v_index+1][2]*(math.pi/4))) 
+			end[1] = vectors[v_index+1][0][1] + (vectors[v_index+1][1] * math.cos(vectors[v_index+1][2]*(math.pi/4)))
+			x_diff = end[0] - vectors[v_index][0][0]
+			y_diff = end[1] - vectors[v_index][0][1]
+			angle = math.asin(y_diff/x_diff)
+			mag = math.sqrt(x_diff*x_diff + y_diff*y_diff)
+			clear_flag = True
+			print(x_diff)
+			for i in range(int(x_diff)):
+				y = int(vectors[v_index][0][1] + i*math.sin(angle))
+				x = vectors[v_index][0][1] + i
+				if (path[y][x] == 255): # obstacle????
+					clear_flag = False
+					break
+			if (clear_flag):
+				vectors_merged.append(create_vector(vectors[v_index][0], mag, angle))
+	print(vectors_merged)
+			
+
 
 
