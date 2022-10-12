@@ -59,17 +59,6 @@ def initialise_display():
 ### ===================================== ###
 # INITIALISE STEP
 
-# Initialises particles to begin particle filtering
-"""
-def initialise_particles(particle_count):
-	global display, particles
-
-	particles = []
-	parent = {"position": [63, 63], "rotation": 0, "weight": 0}
-
-	populate_particles(parent, particle_count)	
-"""
-
 # Populate the map with a given number of particles
 def initialise_particles(count, ui_mode = 0):
 	global particles
@@ -77,8 +66,8 @@ def initialise_particles(count, ui_mode = 0):
 	particles = []
 
 	for i in range(count):
-		x = np.random.uniform(31, 95, None)
-		y = np.random.uniform(31, 95, None)
+		x = np.random.uniform(0, 127, None)
+		y = np.random.uniform(0, 127, None)
 		rot = np.random.uniform(0, 2 * math.pi, None)
 		
 		p = create_particle(x, y, rot, 1)
@@ -110,7 +99,10 @@ def move_particle(parent, linear, angular, ui_mode = 0):
 	child = {"position": [0, 0], "rotation": 0, "weight": 1}
 
 	if (ui_mode):
-		display[int(parent["position"][1])][int(parent["position"][0])] = [0, 0, 0]
+		try:
+			display[int(parent["position"][1])][int(parent["position"][0])] = [0, 0, 0]
+		except:
+			print("particle moved out of display area")
 
 	a = parent["rotation"]
 	x = parent["position"][0] 
@@ -161,8 +153,6 @@ def update_particle(particle, observed_landmarks, ui_mode = 0):
 
 		x = particle["position"][0] + math.copysign(r, rx) * math.cos(particle["rotation"] + phi)
 		y = particle["position"][1] + math.copysign(r, ry) * math.sin(particle["rotation"] + phi)
-		
-		#display[int(y)][int(x)] = [128, 0, 128]
 
 		distances = []
 
@@ -178,24 +168,32 @@ def update_particle(particle, observed_landmarks, ui_mode = 0):
 ### ===================================== ###
 # RESAMPLE STEP
 
+# outputs the weight of a given particle
+def particle_weight(particle):
+	return particle["weight"]
+
 # Takes the current set of particles and resamples them
-def trim_particles(threshold, ui_mode = 0):
+def trim_particles(particle_count, ui_mode = 0):
 	global display, particles
 
 	total_weight = 0
 	resample = []
 
-	for particle in particles:
-		if (particle["weight"] > threshold):
-			resample.append(particle)
-			total_weight += particle["weight"]
-		else:
+	particles.sort(key = particle_weight, reverse = True)
+
+	if (ui_mode):
+		for particle in particles[-particle_count:]:
 			display[int(particle["position"][1])][int(particle["position"][0])] = [0, 0, 0]
 
-	for particle in resample:
-		particle["weight"] /= total_weight
+	particles = particles[:particle_count]
 
-	particles = resample
+	for particle in particles:
+		total_weight += particle["weight"]
+		if (ui_mode):
+			display[int(particle["position"][1])][int(particle["position"][0])] = [0, 255, 0]
+
+	for particle in particles:
+		particle["weight"] /= total_weight
 
 	if (ui_mode):
 		for particle in particles:
@@ -220,9 +218,9 @@ def propagate_particle(parent, count, resample, ui_mode = 0):
 	global display, particles
 
 	for i in range(count - 1):
-		x = parent["position"][0] + np.random.normal(0, LINEAR_PROP_MAX, None)
-		y = parent["position"][1] + np.random.normal(0, LINEAR_PROP_MAX, None)
-		rot = parent["rotation"] + np.random.normal(0, ANGULAR_PROP_MAX, None)
+		x = parent["position"][0] + np.random.normal(0, LINEAR_PROP_MAX / 3, None)
+		y = parent["position"][1] + np.random.normal(0, LINEAR_PROP_MAX / 3, None)
+		rot = parent["rotation"] + np.random.normal(0, ANGULAR_PROP_MAX / 3, None)
 		
 		particle = create_particle(x, y, rot, 1)
 
@@ -262,7 +260,7 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 	global landmarks, particles, display
 
 	# Generate a uniformly distributed set of particles inside the maze
-	initialise_particles(30, ui_mode)
+	initialise_particles(100, ui_mode)
 
 	# Read the observed landmarks of the output
 	while (True):
@@ -271,7 +269,7 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 			cv.waitKey(0)
 	
 		# Move each particle a given distance
-		move_step(5, 0, ui_mode = 1)
+		move_step(0, 0, ui_mode = 1)
 
 		if (ui_mode):
 			cv.imshow("display", display)
@@ -281,10 +279,10 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 		update_step(observed_landmarks, ui_mode = 0)
 
 		# Trim the unlikely particles
-		trim_particles(0.2, ui_mode = 0)
+		trim_particles(50, ui_mode = 0)
 
 		# Propagate the remaining particles according to weight
-		resample_particles(30, ui_mode = 1)
+		resample_particles(100, ui_mode = 1)
 
 		if (ui_mode):
 			cv.imshow("display", display)
@@ -295,7 +293,7 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 ### ===================================== ###
 # TEST CODE
 
-landmarks = [[70, 70], [63, 70]]
+landmarks = [[63, 63], [5, 5], [7, 120]]
 
 initialise_display()
 initialise_landmarks(ui_mode = 1)
