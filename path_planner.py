@@ -53,7 +53,7 @@ def path_to_vector(path_array, start, UI_mode):
 							print("current_vector: ", vector)
 							print("current_heading: ", current_heading)
 							print("x,y ", x, " ", y)
-							cv.waitKey(0)
+							#cv.waitKey(0)
 						
 						vectors.append(vector)
 						vector = create_vector((x, y), 0, current_heading)
@@ -81,38 +81,75 @@ def convert_path_to_vectors(path, start, UI_mode): # map array, start[x,y], UI_m
 	vectors = path_to_vector(path, start, UI_mode)
 	return vectors
 
-def merge_vectors(vectors, path): 
+def merge_vectors(vectors, path, path_ui, UI_mode): 
 	print(vectors)
+	print("Merged vectors:")
 	vectors_merged = []
 	end = [0, 0]
 	clear_flag = False
-	for v_index in range(len(vectors)- 1):
-		print(v_index)
+	for v_index in range(len(vectors)):
 		# If this vector was merged on last iteration, skip to next vector
 		if (clear_flag): 
-			print(skipped)
 			clear_flag = False
-			break
-
-
-		if (vectors[v_index][1] != 0):
-			end[0] = vectors[v_index+1][0][0] + (vectors[v_index+1][1] * math.sin(vectors[v_index+1][2]*(math.pi/4))) 
-			end[1] = vectors[v_index+1][0][1] + (vectors[v_index+1][1] * math.cos(vectors[v_index+1][2]*(math.pi/4)))
+		elif (v_index == len(vectors)-1):
+			vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], (vectors[v_index][2]-2)*math.pi/4)
+			vectors_merged.append(vector_rads)
+		elif (vectors[v_index][1] != 0):
+			end[0] = vectors[v_index+1][0][0] + (vectors[v_index+1][1] * math.cos((vectors[v_index+1][2]-2)*(math.pi/4))) 
+			end[1] = vectors[v_index+1][0][1] + (vectors[v_index+1][1] * math.sin((vectors[v_index+1][2]-2)*(math.pi/4)))
 			x_diff = end[0] - vectors[v_index][0][0]
 			y_diff = end[1] - vectors[v_index][0][1]
-			angle = math.asin(y_diff/x_diff)
+			
+			try: 
+				angle = math.atan(y_diff/x_diff)
+				if (x_diff < 0): angle += math.pi
+
+			except:
+				print("angle be funky")
+				if (vectors[v_index][2] == 2):
+					angle = -90
+				elif (vectors[v_index][2] == 6):
+					angle = 90
+				print(vectors[v_index])
+			
 			mag = math.sqrt(x_diff*x_diff + y_diff*y_diff)
 			clear_flag = True
-			print(x_diff)
-			for i in range(int(x_diff)):
-				y = int(vectors[v_index][0][1] + i*math.sin(angle))
-				x = vectors[v_index][0][1] + i
-				if (path[y][x] == 255): # obstacle????
-					clear_flag = False
-					break
+			prev_y = vectors[v_index][0][1]
+			step = 1
+			obs_flag = False
+			for i in range(0, int(x_diff), int(x_diff/abs(x_diff))):
+				y = vectors[v_index][0][1] + i*math.tan(angle)
+				x = vectors[v_index][0][0] + i
+				
+				if (y<prev_y): step = -1
+
+				for j in range(0, int(y - prev_y) + step, step):
+					if (path[int(y+j)][int(x)] == 255): # obstacle????
+						clear_flag = False
+						print("obstacle")
+						cv.waitKey(1) #temp
+						obs_flag = True
+						break
+					if (UI_mode == 1):
+						path_ui[int(y+j)][int(x)] = 180
+						
+				if (obs_flag): break
+				prev_y = y
+
+
 			if (clear_flag):
 				vectors_merged.append(create_vector(vectors[v_index][0], mag, angle))
+			else:
+				vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], (vectors[v_index][2]-2)*math.pi/4)
+				vectors_merged.append(vector_rads)
+			if (UI_mode == 1):
+				path_ui[vectors[v_index][0][1]][vectors[v_index][0][0]] = 60
 	print(vectors_merged)
+	if (UI_mode == 1):
+		cv.namedWindow("path", cv.WINDOW_NORMAL)
+		cv.resizeWindow("path", (1200, 960))
+		cv.imshow("path", path_ui)
+		cv.waitKey(0)
 			
 
 
