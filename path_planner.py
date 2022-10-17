@@ -9,14 +9,15 @@ def create_vector(position, magnitude, heading):
 
 # encodes vector headings to numbers (clockwise)
 def change_to_heading(dx, dy):
-	if ((dx == 0) & (dy == -1)): return 0
-	if ((dx == 1) & (dy == -1)): return 1
-	if ((dx == 1) & (dy == 0)): return 2
-	if ((dx == 1) & (dy == 1)): return 3
-	if ((dx == 0) & (dy == 1)): return 4
-	if ((dx == -1) & (dy == 1)): return 5
-	if ((dx == -1) & (dy == 0)): return 6
-	if ((dx == -1) & (dy == -1)): return 7
+	if ((dx == 0) & (dy == -1)): return -90
+	if ((dx == 1) & (dy == -1)): return -45
+	if ((dx == 1) & (dy == 0)): return 0
+	if ((dx == 1) & (dy == 1)): return 45
+	if ((dx == 0) & (dy == 1)): return 90
+	if ((dx == -1) & (dy == 1)): return 135
+	if ((dx == -1) & (dy == 0)): return 180
+	if ((dx == -1) & (dy == -1)): return -135
+	print("Heading not found")
 	if ((dx == 0) & (dy == 0)): return 253
 
 # follows a continuous grayscale path from start to end generating an array of vector objects
@@ -38,9 +39,7 @@ def path_to_vector(path_array, start, UI_mode):
 				if (path_array[y + dy][x + dx] == 255):
 					end_flag = True
 					current_heading = change_to_heading(dx, dy)
-					if (current_heading == 253):
-						print("ERROR")
-					
+
 					if (current_heading == vector[2]):
 						y += dy
 						x += dx
@@ -92,23 +91,24 @@ def merge_vectors(vectors, path, path_ui, UI_mode):
 		if (clear_flag): 
 			clear_flag = False
 		elif (v_index == len(vectors)-1):
-			vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], (vectors[v_index][2]-2)*math.pi/4)
+			vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], (vectors[v_index][2]) #-2)*math.pi/4)
 			vectors_merged.append(vector_rads)
 		elif (vectors[v_index][1] != 0):
-			end[0] = vectors[v_index+1][0][0] + (vectors[v_index+1][1] * math.cos((vectors[v_index+1][2]-2)*(math.pi/4))) 
-			end[1] = vectors[v_index+1][0][1] + (vectors[v_index+1][1] * math.sin((vectors[v_index+1][2]-2)*(math.pi/4)))
+			end[0] = vectors[v_index+1][0][0] + (vectors[v_index+1][1] * math.cos((vectors[v_index+1][2]) #-2)*(math.pi/4))) 
+			end[1] = vectors[v_index+1][0][1] + (vectors[v_index+1][1] * math.sin((vectors[v_index+1][2]) #-2)*(math.pi/4)))
 			x_diff = end[0] - vectors[v_index][0][0]
 			y_diff = end[1] - vectors[v_index][0][1]
 			
 			try: 
-				angle = math.atan(y_diff/x_diff)
-				if (x_diff < 0): angle += math.pi
+				angle = (180/math.pi)*math.atan(y_diff/x_diff)
+				if (x_diff < 0): angle += 180# math.pi
+				# 90 degrees?
 
 			except:
 				print("angle be funky")
-				if (vectors[v_index][2] == 2):
+				if (vectors[v_index][2] == 0):
 					angle = -90
-				elif (vectors[v_index][2] == 6):
+				elif (vectors[v_index][2] == 4):
 					angle = 90
 				print(vectors[v_index])
 			
@@ -118,7 +118,7 @@ def merge_vectors(vectors, path, path_ui, UI_mode):
 			step = 1
 			obs_flag = False
 			for i in range(0, int(x_diff), int(x_diff/abs(x_diff))):
-				y = vectors[v_index][0][1] + i*math.tan(angle)
+				y = vectors[v_index][0][1] + i*math.tan(angle*(math.pi/180))
 				x = vectors[v_index][0][0] + i
 				
 				if (y<prev_y): step = -1
@@ -140,7 +140,7 @@ def merge_vectors(vectors, path, path_ui, UI_mode):
 			if (clear_flag):
 				vectors_merged.append(create_vector(vectors[v_index][0], mag, angle))
 			else:
-				vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], (vectors[v_index][2]-2)*math.pi/4)
+				vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], (vectors[v_index][2])# -2)*math.pi/4)
 				vectors_merged.append(vector_rads)
 			if (UI_mode == 1):
 				path_ui[vectors[v_index][0][1]][vectors[v_index][0][0]] = 60
