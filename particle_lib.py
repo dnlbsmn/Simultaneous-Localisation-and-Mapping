@@ -1,31 +1,20 @@
 import cv2 as cv
 import numpy as np
 import math
-
-### ===================================== ###
-# TUNING CONSTANTS
-
-# Normal distribution of the distance reweighting max error in centimetres
-MAX_LANDMARK_ERROR = 30
-
-# When moving what percentage error is allowed
-MOTOR_DRIFT_MAX = 0.015
-ANGLE_ERROR_MAX = 0.1
-LINEAR_ERROR_MAX = 0.1
-
-# When propogating what is the maximum error allowed in centimetres
-LINEAR_PROP_MAX = 5
-ANGULAR_PROP_MAX = 0.1
+from constants import *
 
 ### ===================================== ###
 # INITIALISATION FUNCTIONS
 	
 # A function to initialise the landmarks array and the gaussian distance
-def initialise_landmarks(ui_mode = 0):
+def initialise(ui_mode):
 	global landmarks, display, normal
 
 	normal = []
 	distances = np.linspace(0, 500, 500)
+
+	# Generate a uniformly distributed set of particles inside the maze
+	initialise_particles(INIT_PARTICLES, ui_mode)
 	
 	for distance in distances:
 		normal.append(gaussian(distance, 0, MAX_LANDMARK_ERROR / 3))  
@@ -48,12 +37,12 @@ def gaussian(x, mu, sig):
 	return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 # Initialising the display matrix
-def initialise_display():
+def initialise_display(image):
 	global display
 
 	cv.namedWindow("display", cv.WINDOW_NORMAL)
 	cv.resizeWindow("display", (1280, 960))
-	display = np.zeros((128, 128), dtype = np.uint8)
+	display = image
 	display = cv.cvtColor(display, cv.COLOR_GRAY2BGR)
 
 ### ===================================== ###
@@ -66,8 +55,8 @@ def initialise_particles(count, ui_mode = 0):
 	particles = []
 
 	for i in range(count):
-		x = np.random.uniform(0, 127, None)
-		y = np.random.uniform(0, 127, None)
+		x = np.random.uniform(0, 230, None)
+		y = np.random.uniform(0, 286, None)
 		rot = np.random.uniform(0, 2 * math.pi, None)
 		
 		p = create_particle(x, y, rot, 1)
@@ -259,45 +248,35 @@ def example_distributions():
 def particle_filter(observed_landmarks, ui_mode = 0):
 	global landmarks, particles, display
 
-	# Generate a uniformly distributed set of particles inside the maze
-	initialise_particles(100, ui_mode)
-
 	# Read the observed landmarks of the output
-	while (True):
-		if (ui_mode):
-			cv.imshow("display", display)
-			cv.waitKey(0)
 	
-		# Move each particle a given distance
-		move_step(0, 0, ui_mode = 1)
+	# Move each particle a given distance
 
-		if (ui_mode):
-			cv.imshow("display", display)
-			cv.waitKey(0)
+	# Update the particle weights accordingly
+	update_step(observed_landmarks, ui_mode = 0)
 
-		# Update the particle weights accordingly
-		update_step(observed_landmarks, ui_mode = 0)
+	# Trim the unlikely particles
+	trim_particles(TRIMMED_PARTICLES, ui_mode = 0)
 
-		# Trim the unlikely particles
-		trim_particles(50, ui_mode = 0)
+	# Propagate the remaining particles according to weight
+	resample_particles(RESAMPLED_PARTICLES, ui_mode = 1)
 
-		# Propagate the remaining particles according to weight
-		resample_particles(100, ui_mode = 1)
-
-		if (ui_mode):
-			cv.imshow("display", display)
-			cv.waitKey(0)
+	if (ui_mode):
+		cv.imshow("display", display)
+		cv.waitKey(0)
+		
 
 	# Wait for the next movement and repeat
 
 ### ===================================== ###
 # TEST CODE
-
-landmarks = [[63, 63], [5, 5], [7, 120]]
+'''
+landmarks = [[63, 63], [10, 10], [10, 117]]
 
 initialise_display()
-initialise_landmarks(ui_mode = 1)
+initialise(ui_mode = 1)
 
-particle_filter([[0, 0]], ui_mode = 1)
+particle_filter([[-30, -30], [23, 23], [-30, 77]], ui_mode = 1)
 
 print("DONE")
+'''
