@@ -15,8 +15,11 @@ ANGULAR_PROP_MAX = 0.1
 
 # Propogation numbers for the particles
 INIT_PARTICLES = 3000
-TRIMMED_PARTICLES = 500
+TRIMMED_PARTICLES = 1000
 RESAMPLED_PARTICLES = 1500
+
+# Threshold for keeping particles
+TRIM_THRESHOLD = 0.8
 
 ### ===================================== ###
 # TUNING CONSTANTS FOR MOVEMENT
