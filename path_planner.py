@@ -91,13 +91,14 @@ def merge_vectors(vectors, path, path_ui, UI_mode):
 		if (clear_flag): 
 			clear_flag = False
 		elif (v_index == len(vectors)-1):
-			vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], (vectors[v_index][2]) #-2)*math.pi/4)
+			vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], vectors[v_index][2]) #-2)*math.pi/4)
 			vectors_merged.append(vector_rads)
 		elif (vectors[v_index][1] != 0):
-			end[0] = vectors[v_index+1][0][0] + (vectors[v_index+1][1] * math.cos((vectors[v_index+1][2]) #-2)*(math.pi/4))) 
-			end[1] = vectors[v_index+1][0][1] + (vectors[v_index+1][1] * math.sin((vectors[v_index+1][2]) #-2)*(math.pi/4)))
+			end[0] = vectors[v_index+1][0][0] + (vectors[v_index+1][1] * math.cos(vectors[v_index+1][2]*(math.pi/180))) #-2)*(math.pi/4))) 
+			end[1] = vectors[v_index+1][0][1] + (vectors[v_index+1][1] * math.sin(vectors[v_index+1][2]*(math.pi/180))) #-2)*(math.pi/4)))
 			x_diff = end[0] - vectors[v_index][0][0]
 			y_diff = end[1] - vectors[v_index][0][1]
+			print(end)
 			
 			try: 
 				angle = (180/math.pi)*math.atan(y_diff/x_diff)
@@ -140,7 +141,7 @@ def merge_vectors(vectors, path, path_ui, UI_mode):
 			if (clear_flag):
 				vectors_merged.append(create_vector(vectors[v_index][0], mag, angle))
 			else:
-				vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], (vectors[v_index][2])# -2)*math.pi/4)
+				vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], vectors[v_index][2])# -2)*math.pi/4)
 				vectors_merged.append(vector_rads)
 			if (UI_mode == 1):
 				path_ui[vectors[v_index][0][1]][vectors[v_index][0][0]] = 60
