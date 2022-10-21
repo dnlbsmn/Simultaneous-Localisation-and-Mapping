@@ -55,7 +55,7 @@ def initialise_display(image):
 	global display
 
 	cv.namedWindow("display", cv.WINDOW_NORMAL)
-	cv.resizeWindow("display", (640, 480))
+	cv.resizeWindow("display", (960, 720))
 	display = image
 
 ### ===================================== ###
@@ -279,17 +279,21 @@ def render_particle(particle):
 
 	print(particle)
 
-	circle_display = cv.imread("perfect_map.png")
+	render_width = int(display.shape[1] * 2)
+	render_height = int(display.shape[0] * 2)
+	render_size = (render_width, render_height)
 
-	x1 = int(round(particle["position"][0]))
-	y1 = int(round(particle["position"][1]))
-	x2 = int(round(particle["position"][0] + 10 * math.cos(particle["rotation"])))
-	y2 = int(round(particle["position"][1] + 10 * math.sin(particle["rotation"])))
+	render_display = cv.resize(display, render_size)
 
-	cv.circle(circle_display, (x1, y1), 5, [128, 0, 128], 1)
-	cv.line(circle_display, (x1, y1), (x2, y2), [196, 0, 196], 1)
+	x1 = int(round(2 * particle["position"][0]))
+	y1 = int(round(2 * particle["position"][1]))
+	x2 = int(round(2 * particle["position"][0] + 35 * math.cos(particle["rotation"])))
+	y2 = int(round(2 * particle["position"][1] + 35 * math.sin(particle["rotation"])))
 
-	cv.imshow("display", circle_display)
+	cv.circle(render_display, (x1, y1), 35, [128, 0, 128], 1)
+	cv.line(render_display, (x1, y1), (x2, y2), [196, 0, 196], 1)
+
+	cv.imshow("display", render_display)
 	cv.waitKey(0)
 
 # Displays the particles on the matrix
@@ -350,7 +354,6 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 ### ===================================== ###
 # TEST CODE
 
-'''
 landmarks = [[100, 117], [100, 200]]
 image = cv.imread("perfect_map.png")
 
@@ -363,4 +366,3 @@ for i in range(4):
 	particle_filter(observed_landmarks, ui_mode = 1)
 
 print("DONE")
-'''
