@@ -260,7 +260,6 @@ def propagate_particle(parent, count, resample, ui_mode = 0):
 		particle = create_particle(x, y, rot, 1)
 
 		if (particle == None):
-			print("None")
 			continue
 
 		if (ui_mode):
@@ -287,8 +286,8 @@ def render_particle(particle):
 	x2 = int(round(particle["position"][0] + 10 * math.cos(particle["rotation"])))
 	y2 = int(round(particle["position"][1] + 10 * math.sin(particle["rotation"])))
 
-	cv.circle(circle_display, [x1, y1], 5, [128, 0, 128], 1)
-	cv.line(circle_display, [x1, y1], [x2, y2], [196, 0, 196], 1)
+	cv.circle(circle_display, (x1, y1), 5, [128, 0, 128], 1)
+	cv.line(circle_display, (x1, y1), (x2, y2), [196, 0, 196], 1)
 
 	cv.imshow("display", circle_display)
 	cv.waitKey(0)
@@ -351,6 +350,7 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 ### ===================================== ###
 # TEST CODE
 
+'''
 landmarks = [[100, 117], [100, 200]]
 image = cv.imread("perfect_map.png")
 
@@ -363,3 +363,4 @@ for i in range(4):
 	particle_filter(observed_landmarks, ui_mode = 1)
 
 print("DONE")
+'''

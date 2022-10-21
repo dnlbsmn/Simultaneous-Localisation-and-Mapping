@@ -1,5 +1,8 @@
+### ===================================== ###
+# IMPORTING EVERYTHING
+
 import a_star
-import path_planner
+import path_planner as pp
 import cv2 as cv
 import slamBotHD as sb
 import depth_rect_lib as dr
@@ -12,6 +15,9 @@ import math
 
 UI_mode = 1
 
+### ===================================== ###
+# DEFINING FUNCTIONS
+
 def initialise():
 	dr.initialise_matrices(300)
 	dr.initialise_tan()
@@ -21,39 +27,30 @@ def initialise():
 	sleep(2)
 
 	print(sb.botBatt)
-
-initialise()
-
-maze = cv.imread("perfect_map.png")
-maze = cv.cvtColor(maze, cv.COLOR_BGR2GRAY)
 	
-cv.imshow('Harris Corners', maze)
-cv.waitKey(0)
+def display_local_map():
+	global view
+
+	cv.imshow("local map", view) 
+	cv.waitKey(1)	
 	
-pl.landmarks = lg.extract_landmarks(maze, ui_mode = 1)
-
-maze = cv.imread("perfect_map.png")
-maze = cv.cvtColor(maze, cv.COLOR_BGR2GRAY)
-
-while True:
+def observe_landmarks():
+	global view, observed_landmarks
+	
 	depth_array = sb.imgDepth
 	ang_deg = sb.imuYaw
 	
-	while(ang_deg==None):
-		sleep(1)
-		print("null")
-		
-	ang_rad = ang_deg * 3.14159265358793 / 180
-
+	dr.local_map = np.zeros((601, 601), dtype = np.uint8)
+	
 	slyce = depth_array[236:244][:]
 	slyce = dr.depth_to_greyscale(slyce)
 	slyce_1d = dr.avg_slice(slyce)
 	
-	dr.local_map = np.zeros((601, 601), dtype = np.uint8)
 	dr.project_slit(slyce_1d)
 	view = lg.clean_image_for_lm(dr.local_map)
-
-	cv.imshow("local map", view) 
+	
+	cv.imshow('Harris Corners', view)
+	cv.waitKey(0)
 	
 	observed_landmarks = lg.landmarks_from_slice(view, ui_mode=1)
 	linked_points = dr.derectify_points(observed_landmarks)
@@ -63,33 +60,101 @@ while True:
 	
 	for point in linked_landmarks:
 		observed_landmarks.append([point[0][0] - 319, point[0][1]])
+		
+	print("New landmarks: ", observed_landmarks)
+		
+def load_global_map():
+	global maze
 
-	pl.initialise_display(maze)
-	pl.initialise(ui_mode = 1)
+	maze = cv.imread("perfect_map.png")
+	pl.landmarks = lg.landmarks_from_global(cv.cvtColor(maze, cv.COLOR_BGR2GRAY), ui_mode = 0)
+		
+### ===================================== ###
+# INITIALISATION	
 	
+initialise()
+load_global_map()
+
+pl.initialise_display(maze)
+pl.initialise(maze, ui_mode = 1)
+
+### ===================================== ###
+# TESTBENCH
+
+while True:
+	observe_landmarks()
+	display_local_map()
+
 	for i in range(4):
+		observe_landmarks()
+		print("What the for loop sees: ", observed_landmarks)
 	
-		pl.move_step(0, 0, ui_mode = 1)
-		pl.particle_filter(observed_landmarks, ui_mode = 1)
-	
-	bm.relative_rotate(90)
-	sleep(2)
+		for i in range(1):
+			pl.update_step(observed_landmarks, ui_mode = 1)
+			pl.resample_step(ui_mode = 1)
+		
+		print("rotation start")
+		bm.relative_rotate(90)
+		sleep(2)
+		print("rotation done")
+		pl.move_step(0, 90, ui_mode = 1)
+		print("display done")
+		display_local_map()
 
-	pl.move_step(0, math.pi/2, ui_mode = 1)
-	pl.particle_filter(observed_landmarks, ui_mode = 1)
-	
-	for i in range(100):
-		pl.move_step(0, 0, ui_mode = 1)
-		pl.particle_filter(observed_landmarks, ui_mode = 1)
-	
 	if cv.waitKey(1) & 0xFF == ord('q'):
 		cv.imwrite("generated_map.png", dr.global_map)
 		break
-
+		
+	print("final display")
+	cv.waitKey(0)
+	break
+	
 sb.shutDown()
 
 ### ================================ ###
 # UNUSED STUFF
+
+'''	
+	for i in range(5):
+		pl.update_step(observed_landmarks, ui_mode = 1)
+		pl.resample_step(ui_mode = 1)
+		
+	print("move start")
+	bm.relative_move(50)
+	sleep(2)
+	print("move done")	
+	pl.move_step(50, 0, ui_mode = 1)
+	pl.particle_filter(observed_landmarks, ui_mode = 1)
+	
+	for i in range(5):
+		pl.update_step(observed_landmarks, ui_mode = 1)
+		pl.resample_step(ui_mode = 1)
+'''
+
+'''
+path, start = a_star.run(maze, [64, 18], [152, 58], ui_mode=1)
+
+if (UI_mode): path_4_ui = cv.addWeighted(maze,0.3,path,1,0)
+
+vectors = pp.convert_path_to_vectors(path, start, 1)
+
+vectors_merged = pp.merge_vectors(vectors, maze, path_4_ui, 1)
+
+'''
+		
+'''	
+	bm.relative_rotate(90)
+	sleep(2)
+	pl.move_step(0, math.pi/2, ui_mode = 0)
+	pl.update_step(observed_landmarks, ui_mode = 0)
+	pl.resample_step(ui_mode = 0)
+	
+	for i in range(5):
+		pl.move_step(0, 0, ui_mode = 0)
+		pl.update_step(observed_landmarks, ui_mode = 0)
+		pl.resample_step(ui_mode = 0)
+'''
+	
 
 '''
 while True:

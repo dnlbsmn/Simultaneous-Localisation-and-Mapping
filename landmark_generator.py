@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 from constants import *
 
-def extract_landmarks(image, ui_mode = 0):
+def landmarks_from_global(image, ui_mode = 0):
 	'''
 	extract_landmarks takes an image that has closed contours and returns an array of corners
 
@@ -33,7 +33,7 @@ def extract_landmarks(image, ui_mode = 0):
 		kernel = np.ones((7,7), np.uint8)
 		harris_corners = cv.dilate(harris_corners, kernel, iterations= 2)
 
-		image[harris_corners > 0.025 * harris_corners.max()] = 128
+		image[harris_corners > 0.003 * harris_corners.max()] = 128
 	
 		cv.imshow('Harris Corners', image)
 		cv.waitKey(0)
@@ -79,7 +79,6 @@ def landmarks_from_slice(image, ui_mode = 0):
 			
 	if (ui_mode):
 		cv.imshow('Harris Corners', image)
-		#cv.waitKey(0)
 	
 	return landmarks
 	
@@ -114,4 +113,5 @@ def clean_image_for_lm(image):
 	image = thresh
 	image = cv.erode(image, np.ones((3, 3)), iterations = 1)
 	image = cv.dilate(image, np.ones((2, 2)),iterations = 1)
+	
 	return image
