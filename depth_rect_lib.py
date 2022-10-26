@@ -7,12 +7,13 @@ RAD_OFFSET = 0.497418837
    
 # Initialize or reset the matrices
 def initialise_matrices(resolution):
-    global slit_array, tan_array, local_map, global_map
+    global slit_array, tan_array, local_map, global_map, global_preview
 
     slit_array = np.zeros((640), dtype = np.uint16)
     tan_array = np.zeros((640), dtype = np.float)
     local_map = np.zeros((601, 601), dtype = np.uint8)
     global_map = np.zeros((601, 601), dtype = np.uint8)
+    global_preview = np.zeros((601, 601), dtype = np.uint8)
 
 # Initialises the tangent array to be applied to the slit
 def initialise_tan():
@@ -20,7 +21,9 @@ def initialise_tan():
         tan_array[pixel] = - math.tan((RAD_PER_PIXEL * pixel - RAD_OFFSET))
 
 # Fully manipulate a rectified slit image
-def interpret_slit(slit_array, x, y, heading):
+def interpret_slit(gmap, slit_array, x, y, heading, weight):
+    heading = -heading * math.pi / 180
+
 	# Manipulating the left side
     for pixel in range(320):
         if (slit_array[319 - pixel] > 0):
@@ -33,7 +36,7 @@ def interpret_slit(slit_array, x, y, heading):
             rot_pix_y = int(r*math.cos(- heading + phi))
             rot_pix_x = int(r*math.sin(- heading + phi))
 
-            global_map[rot_pix_y + y][x + rot_pix_x] = 255
+            gmap[rot_pix_y + y][x + rot_pix_x] = weight
             
     # Manipulating the right side
     for pixel in range(320):
@@ -47,7 +50,7 @@ def interpret_slit(slit_array, x, y, heading):
             rot_pix_y = int(r*math.cos(heading + phi))
             rot_pix_x = int(r*math.sin(heading + phi))
 
-            global_map[rot_pix_y + y][- rot_pix_x + x + 1] = 255 
+            gmap[rot_pix_y + y][- rot_pix_x + x + 1] = weight 
     
 # Display an uncorrected slit as a top down view
 def uncorrected_slit(slit_array):
@@ -77,23 +80,30 @@ def clean_image(map):
     cv.imshow("display", map)
     cv.waitKey(0)
 
-		
-def avg_slice(slyce):
-	slyce_1d = np.zeros(640, dtype=np.float)
-	#print(slyce_1d)
-	#print(slyce)
+# Takes the average of an eight pixel thick slice
+def average_slice(slyce):
+	averaged_slice = np.zeros(640, dtype=np.float)
 	
 	for j in range(640):
 		for i in range(8):
-			slyce_1d[j] += slyce[i][j]/8
-	return slyce_1d
-	
-# Since the depth sensor has a maximum range of 5 metres
-def depth_to_greyscale(depth_array):
-	greyscale_array = depth_array * 50
-	greyscale_array = greyscale_array.astype(np.uint8)
+			averaged_slice[j] += slyce[i][j]/8
 
-	return greyscale_array
+	return averaged_slice
+	
+# Converts the depth readings from metres to centimetres
+def depth_to_centimetres(depth_array):
+	centimetres_array = depth_array * 100
+	centimetres_array = centimetres_array.astype(np.uint8)
+
+	return centimetres_array
+
+# Takes an eight thick slice from the depth sensor and formats it
+def convert_to_slice(depth_image):
+    slyce = depth_image[236:244][:]
+    slyce = depth_to_centimetres(slyce)
+    slyce_1d = average_slice(slyce)
+
+    return slyce_1d
 	
 # This function displays the rectified version of the slit, but it is not rotatable
 def project_slit(slit_array):
@@ -168,16 +178,3 @@ def interpret_slit_mirror(slit_array, x, y, heading):
             rot_pix_x = int(r*math.sin(heading + phi))
 
             global_map[rot_pix_y + y][- rot_pix_x + x + 1] = 255 
-            
-'''       
-cv.namedWindow("display", cv.WINDOW_NORMAL)
-cv.resizeWindow("display", 640, 480)
-initialise_matrices(600)
-initialise_tan()
-test_slit(slit_array)
-interpret_slit(slit_array, 601, 601, -0.4)
-uncorrected_slit(slit_array)
-cv.imshow("display", uncorrected_view)
-cv.waitKey(0)
-'''
-

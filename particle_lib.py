@@ -33,16 +33,20 @@ def create_particle(x, y, rot, weight, ui_mode=0):
 	global obstacle_map
 
 	try:
+		if ((int(y) > MAP_HEIGHT) | (int(x) > MAP_WIDTH)):
+			return None
+		if ((int(y) < 0) | (int(x) < 0)):
+			return None
 		if (obstacle_map[int(y)][int(x)] == 255):
+			#print("check")
 			return None
 	except:
 		return None
 
 	particle = {"position": [x, y], "rotation": rot, "weight": weight}
-
+	
 	if (ui_mode):
-		display[int(particle["position"][1])][int(
-			particle["position"][0])] = [40, 40, 40]
+		display[int(particle["position"][1])][int(particle["position"][0])] = [40, 40, 240]
 
 	return particle
 
@@ -68,8 +72,8 @@ def initialise_particles(count, ui_mode=0):
 	particles = []
 
 	for i in range(count):
-		x = np.random.uniform(0, 230, None)
-		y = np.random.uniform(0, 286, None)
+		x = np.random.uniform(0, MAP_WIDTH, None)
+		y = np.random.uniform(0, MAP_HEIGHT, None)
 		rot = np.random.uniform(0, 2 * math.pi, None)
 
 		p = create_particle(x, y, rot, 1)
@@ -126,17 +130,17 @@ def move_particle(parent, linear, angular, ui_mode=0):
 	# The uncertainty from explicit movements
 	a += angular + angular * np.random.normal(0, ANGLE_ERROR_MAX / 3, None)
 	x += linear * math.cos(a) * (1 + np.random.normal(0,LINEAR_ERROR_MAX / 3, None))
-	y += linear * math.sin(a) * (1 + np.random.normal(0,LINEAR_ERROR_MAX / 3, None))
+	y -= linear * math.sin(a) * (1 + np.random.normal(0,LINEAR_ERROR_MAX / 3, None))
 
 	# Assigning the generated values appropriately
-	child = create_particle(x, y, a, 1)
+	child = create_particle(x, y, a, 1, ui_mode = 1)
 
 	if (child == None):
 		return None
 
 	if (ui_mode):
 		try:
-			display[int(parent["position"][1])][int(parent["position"][0])] = [255, 0, 0]
+			display[int(child["position"][1])][int(child["position"][0])] = [255, 0, 0]
 		except:
 			print("particle moved out of display area")
 
@@ -161,13 +165,10 @@ def update_particle(particle, observed_landmarks, ui_mode=0):
 		ry = observed_landmark[1]
 
 		r = math.sqrt(rx * rx + ry * ry)
-		if (rx != 0):
-			phi = math.atan(ry / rx)
-		else:
-			phi = math.pi / 2
+		phi = math.atan(rx / ry)
 
-		x = particle["position"][0] + math.copysign(r, rx) * math.cos(particle["rotation"] + phi)
-		y = particle["position"][1] + math.copysign(r, ry) * math.sin(particle["rotation"] + phi)
+		x = particle["position"][0] + r * math.cos(particle["rotation"] + phi)
+		y = particle["position"][1] - r * math.sin(particle["rotation"] + phi)
 
 		distances = []
 
@@ -180,7 +181,7 @@ def update_particle(particle, observed_landmarks, ui_mode=0):
 ### ===================================== ###
 # RESAMPLE STEP
 
-# The entirety of the resample step of particle filterinG
+# The entirety of the resample step of particle filtering
 def resample_step(total_count=RESAMPLED_PARTICLES, remnant_count=TRIMMED_PARTICLES, remnant_weight=TRIM_THRESHOLD, ui_mode=0):
 	if (ui_mode):
 		for particle in particles:
@@ -270,7 +271,7 @@ def propagate_particle(parent, count, resample, ui_mode = 0):
 
 		resample.append(particle)
 	
-### ===================================== ###
+### =============================print(image.shape)======== ###
 # MISCELLANEOUS
 
 # Display the most likely particle
@@ -288,7 +289,7 @@ def render_particle(particle):
 	x1 = int(round(2 * particle["position"][0]))
 	y1 = int(round(2 * particle["position"][1]))
 	x2 = int(round(2 * particle["position"][0] + 35 * math.cos(particle["rotation"])))
-	y2 = int(round(2 * particle["position"][1] + 35 * math.sin(particle["rotation"])))
+	y2 = int(round(2 * particle["position"][1] - 35 * math.sin(particle["rotation"])))
 
 	cv.circle(render_display, (x1, y1), 35, [128, 0, 128], 1)
 	cv.line(render_display, (x1, y1), (x2, y2), [196, 0, 196], 1)
@@ -312,6 +313,17 @@ def example_distributions():
 
 	cv.imshow("display", display)
 	cv.waitKey(0)
+
+def display_info(event, x, y, flags, param):
+	global display
+	
+	if event == cv.EVENT_LBUTTONDOWN:
+		print("Coords: ", x, y)
+		print(particles[100])
+
+		display[int(particles[100]["position"][1])][int(particles[100]["position"][0])] = [0, 255, 255]
+
+		cv.imshow("display", display)
 
 ### ===================================== ###
 # PARTICLE FILTER
@@ -353,16 +365,46 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 
 ### ===================================== ###
 # TEST CODE
-
-landmarks = [[100, 117], [100, 200]]
+'''
+landmarks = [[100, 100], [100, 200], [200, 100], [200, 200], [150, 270]]
 image = cv.imread("perfect_map.png")
 
-observed_landmarks = [[0, 0], [87, 0]]
+#create_particle(100, -1, 90, 1)
 
 initialise_display(image)
 initialise(image, ui_mode = 1)
+cv.setMouseCallback('display', display_info)  
 
-for i in range(4):
-	particle_filter(observed_landmarks, ui_mode = 1)
+print("STEP 1")
+
+observed_landmarks = [[0, 1], [0, 101]]
+
+update_step(observed_landmarks, ui_mode = 1)
+render_particle(particles[0])
+print(particles[0])
+resample_step(ui_mode = 1)
+move_step(0, 90, ui_mode = 1)
+
+for i in range(5):
+	print("STEP TURNED")
+
+	observed_landmarks = [[0, 1], [0, 101]]
+
+	update_step(observed_landmarks, ui_mode = 1)
+	render_particle(particles[0])
+	print(particles[0])
+	resample_step(ui_mode = 1)
+	move_step(100, 0, ui_mode = 1)
+
+	print("STEP MOOVED")
+
+	observed_landmarks = [[0, 1]]
+
+	update_step(observed_landmarks, ui_mode = 1)
+	render_particle(particles[0])
+	print(particles[0])
+	resample_step(ui_mode = 1)
+	move_step(0, -90, ui_mode = 1)
 
 print("DONE")
+'''

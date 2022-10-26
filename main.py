@@ -26,48 +26,66 @@ def initialise():
 	sb.readCoreData()
 	sleep(2)
 
-	print(sb.botBatt)
+	print("Battery voltage:", sb.botBatt, "V")
 	
 def display_local_map():
 	global view
 
 	cv.imshow("local map", view) 
+	#cv.imwrite("sample_corner_1", view)
 	cv.waitKey(1)	
+
+def display_global_map():
+	cv.imshow("global map", dr.global_map) 
+	#cv.imwrite("sample_corner_1", view)
+	#dr.global_map  = lg.clean_image_for_lm(dr.global_map)
+	cv.waitKey(1)	
+
+def init_slit():
+	depth_array = sb.imgDepth
+	depth_slice = dr.convert_to_slice(depth_array)
+
+	return depth_slice
 	
-def observe_landmarks():
+def observe_landmarks(slyce_1d):
 	global view, observed_landmarks
 	
-	depth_array = sb.imgDepth
-	ang_deg = sb.imuYaw
-	
 	dr.local_map = np.zeros((601, 601), dtype = np.uint8)
-	
-	slyce = depth_array[236:244][:]
-	slyce = dr.depth_to_greyscale(slyce)
-	slyce_1d = dr.avg_slice(slyce)
-	
+
 	dr.project_slit(slyce_1d)
-	view = lg.clean_image_for_lm(dr.local_map)
-	
-	cv.imshow('Harris Corners', view)
-	cv.waitKey(0)
+	view = lg.clean_local_for_lm(dr.local_map)
+	bare_view = view
+
+	#cv.imshow('Harris Corners', view)
+	#cv.waitKey(0)
 	
 	observed_landmarks = lg.landmarks_from_slice(view, ui_mode=1)
 	linked_points = dr.derectify_points(observed_landmarks)
-	linked_landmarks = lg.landmark_filter(linked_points)
+	linked_landmarks = lg.landmark_filter(linked_points, bare_view, ui_mode=1)
 	
+
 	observed_landmarks = []
 	
 	for point in linked_landmarks:
 		observed_landmarks.append([point[0][0] - 319, point[0][1]])
 		
 	print("New landmarks: ", observed_landmarks)
+	return 
 		
 def load_global_map():
 	global maze
 
-	maze = cv.imread("perfect_map.png")
+	maze = cv.imread("cleaned.png")
 	pl.landmarks = lg.landmarks_from_global(cv.cvtColor(maze, cv.COLOR_BGR2GRAY), ui_mode = 0)
+
+def render_bot(x1, y1, heading, image):
+	heading = heading * math.pi / 180
+
+	x2 = x1 + int(17 * math.sin(heading))
+	y2 = y1 + int(17 * math.cos(heading))
+
+	cv.circle(image, (x1, y1), 17, 127, 1)
+	cv.line(image, (x1, y1), (x2, y2), 127, 1)
 		
 ### ===================================== ###
 # INITIALISATION	
@@ -75,41 +93,169 @@ def load_global_map():
 initialise()
 load_global_map()
 
-pl.initialise_display(maze)
-pl.initialise(maze, ui_mode = 1)
+
+
+x = 300
+y = 300
+
 
 ### ===================================== ###
 # TESTBENCH
 
-while True:
-	observe_landmarks()
-	display_local_map()
+########################
+# Map generation stage
+########################
 
-	for i in range(4):
-		observe_landmarks()
-		print("What the for loop sees: ", observed_landmarks)
+#slyce_1d = init_slit()
+#dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
+#display_global_map()
+
+# Spin on the spot and generate a map
+for i in range(0):
 	
-		for i in range(1):
-			pl.update_step(observed_landmarks, ui_mode = 1)
-			pl.resample_step(ui_mode = 1)
+	bm.relative_rotate(45)
+	cv.waitKey(3000)
+
+	slyce_1d = init_slit()
+	dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
+	display_global_map()
+
+	dr.global_preview = dr.global_map.copy()
+	render_bot(x, y, bm.get_heading(), dr.global_preview)
+	cv.imshow("Preview", dr.global_preview)
+	cv.waitKey(10)
+	
+# Go through the user controlled map generation
+while False:	
+	print("Press Q to end map generation")
+	print("Press M for relative move")
+	print("Press R for relative rotate")
+	print("Press S to take a scan")
+	key = cv.waitKey(0) & 0xFF
+
+	# finalise map
+	if (key == ord('q')):
+		cv.imwrite("generated_map.png", dr.global_map)
+		break
+
+	# relative move by user defined input
+	elif (key == ord('m')):
+		try: 
+			dist = int(input('Distance (cm): '))
+		except:
+			continue
+		x, y = bm.relative_move(dist, x, y)
+		dr.global_preview = dr.global_map.copy()
+		render_bot(x, y, bm.get_heading(), dr.global_preview)
+		cv.imshow("Preview", dr.global_preview)
+
+	# relative rotate by user defined input
+	elif (key == ord('r')):
+		try:
+			angle = int(input('Angle (deg): '))
+		except:
+			continue
+		bm.relative_rotate(angle)
+		dr.global_preview = dr.global_map.copy()
+		render_bot(x, y, bm.get_heading(), dr.global_preview)
+		cv.imshow("Preview", dr.global_preview)
+
+	# take a scan 
+	elif (key == ord('s')):
+		slyce_1d = init_slit()
+		print("Use WASD to correct robot position")
+		print("Use ZX to correct robot heading")
+		print("Press Q to solidify scan")
+		print("Press R to delete last scan\n")
+
+		while True:
+			# display perceived map
+			dr.global_preview = dr.global_map.copy()
+			dr.interpret_slit(dr.global_preview, slyce_1d, x, y, bm.get_heading(), 127)
+			render_bot(x, y, bm.get_heading(), dr.global_preview)
+			cv.imshow("Preview", dr.global_preview)
+			
+			key = cv.waitKey(0) & 0xFF
+
+			# display solidified map
+			if (key == ord('q')):
+				dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
+				display_global_map()
+				break
+
+			# delete scan without solidifying
+			elif (key == ord('r')):
+				break
+
+			# correct robot position/heading
+			elif (key == ord('w')):
+				y -= 1
+			elif (key == ord('a')):
+				x -= 1
+			elif (key == ord('s')):
+				y += 1
+			elif (key == ord('d')):
+				x += 1
+			elif (key == ord('z')):
+				bm.heading_offset += 1
+			elif (key == ord('x')):
+				bm.heading_offset -= 1
+		
+########################
+# Localisation stage
+########################
+
+pl.initialise_display(maze)
+pl.initialise(maze, ui_mode = 1)
+
+while True:
+	#observe_landmarks()
+	#display_local_map()
+
+	for i in range(7):
+		slyce_1d = init_slit()
+		observe_landmarks(slyce_1d)
+
+		#head = sb.imuYaw
+		#dr.interpret_slit(slyce_1d, x, y, head)
+		#display_global_map()
+		display_local_map()
+		
+		print("What the for loop sees: ", observed_landmarks)
+
+		if observed_landmarks == []:
+			print("No landmarks found")
+		else:
+			for i in range(1):
+				pl.update_step(observed_landmarks, ui_mode = 1)
+				pl.render_particle(pl.particles[0])
+				pl.resample_step(ui_mode = 1)
 		
 		print("rotation start")
-		bm.relative_rotate(90)
+		bm.relative_rotate(45)
 		sleep(2)
-		print("rotation done")
-		pl.move_step(0, 90, ui_mode = 1)
+		print("rotation end")
+		pl.move_step(0, 45, ui_mode = 1)
 		print("display done")
-		display_local_map()
+
 
 	if cv.waitKey(1) & 0xFF == ord('q'):
 		cv.imwrite("generated_map.png", dr.global_map)
 		break
 		
 	print("final display")
+	pl.update_step(observed_landmarks, ui_mode = 1)
+	pl.render_particle(pl.particles[0])
+	cv.imshow("display", pl.display)
+
 	cv.waitKey(0)
 	break
 	
 sb.shutDown()
+
+########################
+# A STAR STAGE
+########################
 
 ### ================================ ###
 # UNUSED STUFF
