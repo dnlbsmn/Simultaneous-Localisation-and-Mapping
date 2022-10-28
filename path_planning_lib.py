@@ -21,7 +21,7 @@ def change_to_heading(dx, dy):
 	if ((dx == 0) & (dy == 0)): return 253
 
 # follows a continuous grayscale path from start to end generating an array of vector objects
-def path_to_vector(path_array, start, UI_mode):
+def path_to_vector(path_array, start, ui_mode):
 	x = start[0]
 	y = start[1]
 	end_flag = True
@@ -47,7 +47,7 @@ def path_to_vector(path_array, start, UI_mode):
 						loop_flag = True
 						break
 					else:
-						if (UI_mode == 1):
+						if (ui_mode == 1):
 							cv.imshow("path", path_array)
 							print("current_vector: ", vector)
 							print("current_heading: ", current_heading)
@@ -59,7 +59,7 @@ def path_to_vector(path_array, start, UI_mode):
 						break
 
 	vectors.append(vector)
-	if (UI_mode == 1):
+	if (ui_mode == 1):
 		cv.imshow("path", path_array)
 		print("current_vector: ", vector)
 		print("current_heading: ", current_heading)
@@ -70,17 +70,17 @@ def path_to_vector(path_array, start, UI_mode):
 	return vectors
 
 # intermediate function for ui initilise
-def convert_path_to_vectors(path, start, UI_mode): # map array, start[x,y], UI_mode
-	if (UI_mode == 1):
+def convert_path_to_vectors(path, start, ui_mode): # map array, start[x,y], ui_mode
+	if (ui_mode == 1):
 		cv.namedWindow("path", cv.WINDOW_NORMAL)
 		cv.resizeWindow("path", (1200, 960))
 		cv.imshow("path", path)
 		cv.waitKey(0)
 	
-	vectors = path_to_vector(path, start, UI_mode)
+	vectors = path_to_vector(path, start, ui_mode)
 	return vectors
 
-def merge_vectors(vectors, path, path_ui, UI_mode): 
+def merge_vectors(vectors, path, path_ui, ui_mode): 
 	print(vectors)
 	print("Merged vectors:")
 	vectors_merged = []
@@ -131,7 +131,7 @@ def merge_vectors(vectors, path, path_ui, UI_mode):
 						cv.waitKey(1) #temp
 						obs_flag = True
 						break
-					if (UI_mode == 1):
+					if (ui_mode == 1):
 						path_ui[int(y+j)][int(x)] = 180
 						
 				if (obs_flag): break
@@ -143,14 +143,15 @@ def merge_vectors(vectors, path, path_ui, UI_mode):
 			else:
 				vector_rads = create_vector(vectors[v_index][0], vectors[v_index][1], vectors[v_index][2])# -2)*math.pi/4)
 				vectors_merged.append(vector_rads)
-			if (UI_mode == 1):
+			if (ui_mode == 1):
 				path_ui[vectors[v_index][0][1]][vectors[v_index][0][0]] = 60
-	print(vectors_merged)
-	if (UI_mode == 1):
+	
+	if (ui_mode == 1):
 		cv.namedWindow("path", cv.WINDOW_NORMAL)
 		cv.resizeWindow("path", (1200, 960))
 		cv.imshow("path", path_ui)
 		cv.waitKey(0)
+	return vectors_merged
 			
 
 

@@ -7,10 +7,10 @@ from constants import *
 # INITIALISATION FUNCTIONS
 
 # A function to initialise the landmarks array and the gaussian distance
-def initialise(map_image, ui_mode=0):
+def initialise(obstacle_image, ui_mode=0):
 	global landmarks, display, normal, obstacle_map
 
-	obstacle_map = cv.cvtColor(map_image, cv.COLOR_BGR2GRAY)
+	obstacle_map = cv.cvtColor(obstacle_image, cv.COLOR_BGR2GRAY)
 
 	normal = []
 	distances = np.linspace(0, 500, 500)

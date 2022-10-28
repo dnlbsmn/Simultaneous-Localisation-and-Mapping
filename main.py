@@ -1,17 +1,18 @@
 ### ===================================== ###
 # IMPORTING EVERYTHING
 
-import a_star
-import path_planner as pp
-import cv2 as cv
-import slamBotHD as sb
-import depth_rect_lib as dr
-import numpy as np
-import bot_move_lib as bm
-import landmark_generator as lg
-import particle_lib as pl
 from time import sleep
 import math
+import numpy as np
+import cv2 as cv
+
+import slamBotHD as sb
+import a_star_lib as al
+import path_planning_lib as pp
+import depth_rectification_lib as dr
+import bot_move_lib as bm
+import landmark_generation_lib as lg
+import particle_filtering_lib as pf
 
 UI_mode = 1
 
@@ -62,7 +63,6 @@ def observe_landmarks(slyce_1d):
 	observed_landmarks = lg.landmarks_from_slice(view, ui_mode=1)
 	linked_points = dr.derectify_points(observed_landmarks)
 	linked_landmarks = lg.landmark_filter(linked_points, bare_view, ui_mode=1)
-	
 
 	observed_landmarks = []
 	
@@ -76,7 +76,7 @@ def load_global_map():
 	global maze
 
 	maze = cv.imread("cleaned.png")
-	pl.landmarks = lg.landmarks_from_global(cv.cvtColor(maze, cv.COLOR_BGR2GRAY), ui_mode = 0)
+	pf.landmarks = lg.landmarks_from_global(cv.cvtColor(maze, cv.COLOR_BGR2GRAY), ui_mode = 0)
 
 def render_bot(x1, y1, heading, image):
 	heading = heading * math.pi / 180
@@ -91,13 +91,11 @@ def render_bot(x1, y1, heading, image):
 # INITIALISATION	
 	
 initialise()
-load_global_map()
-
-
+#load_global_map()
 
 x = 300
 y = 300
-
+bm.heading_offset = 0
 
 ### ===================================== ###
 # TESTBENCH
@@ -106,12 +104,13 @@ y = 300
 # Map generation stage
 ########################
 
-#slyce_1d = init_slit()
-#dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
-#display_global_map()
+
+slyce_1d = init_slit()
+dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
+display_global_map()
 
 # Spin on the spot and generate a map
-for i in range(0):
+for i in range(7):
 	
 	bm.relative_rotate(45)
 	cv.waitKey(3000)
@@ -126,7 +125,7 @@ for i in range(0):
 	cv.waitKey(10)
 	
 # Go through the user controlled map generation
-while False:	
+while True:	
 	print("Press Q to end map generation")
 	print("Press M for relative move")
 	print("Press R for relative rotate")
@@ -201,18 +200,34 @@ while False:
 			elif (key == ord('x')):
 				bm.heading_offset -= 1
 		
+
+maze = cv.imread("generated_map.png")
+maze = cv.cvtColor(maze, cv.COLOR_BGR2GRAY)
+
+maze = lg.clean_global_for_lm(maze)
+cv.imshow("display", maze)
+cv.waitKey(0)
+
+cv.imwrite("cleanboi.png", maze)
+
+pf.landmarks = lg.landmarks_from_global(maze, ui_mode=1)
+cv.imshow("Harris Corners", maze)
+cv.waitKey(0)
+print(pf.landmarks)
+
+
 ########################
 # Localisation stage
 ########################
 
-pl.initialise_display(maze)
-pl.initialise(maze, ui_mode = 1)
+pf.initialise_display(maze)
+pf.initialise(maze, ui_mode = 1)
 
 while True:
 	#observe_landmarks()
 	#display_local_map()
 
-	for i in range(7):
+	for i in range(1):
 		slyce_1d = init_slit()
 		observe_landmarks(slyce_1d)
 
@@ -227,15 +242,15 @@ while True:
 			print("No landmarks found")
 		else:
 			for i in range(1):
-				pl.update_step(observed_landmarks, ui_mode = 1)
-				pl.render_particle(pl.particles[0])
-				pl.resample_step(ui_mode = 1)
+				pf.update_step(observed_landmarks, ui_mode = 1)
+				pf.render_particle(pf.particles[0])
+				pf.resample_step(ui_mode = 1)
 		
 		print("rotation start")
 		bm.relative_rotate(45)
 		sleep(2)
 		print("rotation end")
-		pl.move_step(0, 45, ui_mode = 1)
+		pf.move_step(0, 45, ui_mode = 1)
 		print("display done")
 
 
@@ -244,37 +259,66 @@ while True:
 		break
 		
 	print("final display")
-	pl.update_step(observed_landmarks, ui_mode = 1)
-	pl.render_particle(pl.particles[0])
-	cv.imshow("display", pl.display)
+	pf.update_step(observed_landmarks, ui_mode = 1)
+	pf.render_particle(pf.particles[0])
+	cv.imshow("display", pf.display)
 
 	cv.waitKey(0)
 	break
 	
-sb.shutDown()
 
 ########################
 # A STAR STAGE
 ########################
+x = pf.particle[0]['position'][0]
+y = pf.particle[0]['position'][1]
+
+traverse_map = cv.dilate(maze, np.ones(18, 18), iterations = 1)
+
+path, start = al.run(traverse_map, [x, y], [330, 300], ui_mode=1)
+
+if (UI_mode): path_4_ui = cv.addWeighted(traverse_map,0.3,path,1,0)
+
+vectors = pp.convert_path_to_vectors(path, start, ui_mode=1)
+
+render_bot(x, y, bm.get_heading(), path_4_ui)
+
+vectors_merged = pp.merge_vectors(vectors, traverse_map, path_4_ui, ui_mode=1)
+
+for vector in vectors_merged:
+	vector[2] -= 90
+
+	bm.relative_rotate(bm.angle_difference(-vector[2], bm.get_heading()))
+	print(bm.angle_difference(-vector[2], bm.get_heading()))
+	cv.waitKey(1000)
+
+	x, y = bm.relative_move(vector[1], x, y)
+	render_bot(x, y, bm.get_heading(), path_4_ui)
+	cv.imshow("path", path_4_ui)
+	cv.waitKey(1000)
+
+cv.waitKey(0)
+
+sb.shutDown()
 
 ### ================================ ###
 # UNUSED STUFF
 
 '''	
 	for i in range(5):
-		pl.update_step(observed_landmarks, ui_mode = 1)
-		pl.resample_step(ui_mode = 1)
+		pf.update_step(observed_landmarks, ui_mode = 1)
+		pf.resample_step(ui_mode = 1)
 		
 	print("move start")
 	bm.relative_move(50)
 	sleep(2)
 	print("move done")	
-	pl.move_step(50, 0, ui_mode = 1)
-	pl.particle_filter(observed_landmarks, ui_mode = 1)
+	pf.move_step(50, 0, ui_mode = 1)
+	pf.particle_filter(observed_landmarks, ui_mode = 1)
 	
 	for i in range(5):
-		pl.update_step(observed_landmarks, ui_mode = 1)
-		pl.resample_step(ui_mode = 1)
+		pf.update_step(observed_landmarks, ui_mode = 1)
+		pf.resample_step(ui_mode = 1)
 '''
 
 '''
@@ -291,14 +335,14 @@ vectors_merged = pp.merge_vectors(vectors, maze, path_4_ui, 1)
 '''	
 	bm.relative_rotate(90)
 	sleep(2)
-	pl.move_step(0, math.pi/2, ui_mode = 0)
-	pl.update_step(observed_landmarks, ui_mode = 0)
-	pl.resample_step(ui_mode = 0)
+	pf.move_step(0, math.pi/2, ui_mode = 0)
+	pf.update_step(observed_landmarks, ui_mode = 0)
+	pf.resample_step(ui_mode = 0)
 	
 	for i in range(5):
-		pl.move_step(0, 0, ui_mode = 0)
-		pl.update_step(observed_landmarks, ui_mode = 0)
-		pl.resample_step(ui_mode = 0)
+		pf.move_step(0, 0, ui_mode = 0)
+		pf.update_step(observed_landmarks, ui_mode = 0)
+		pf.resample_step(ui_mode = 0)
 '''
 	
 
