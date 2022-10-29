@@ -134,13 +134,13 @@ def select_points(event, x, y, flags, param):
 		start = [x, y]
 		print("Start:", start)
 		maze[start[1]][start[0]] = START_COLOR
-		cv.imshow('map', maze)
+		cv.imshow('A*', maze)
 
 	if event == cv.EVENT_RBUTTONDOWN:
 		end = [x, y]
 		print("End:", end)
 		maze[end[1]][end[0]] = START_COLOR
-		cv.imshow('map', maze)
+		cv.imshow('A*', maze)
 
 def display_info(event, x, y, flags, param):
 	if event == cv.EVENT_LBUTTONDOWN:
@@ -179,9 +179,13 @@ def path_cell(point):
 
 def load_map(maze_in):
 	global maze, maze_matrix, maze_height, maze_width, classes, path_array, h_costs, g_costs
-	
-	maze_matrix = maze_in
-	maze = cv.cvtColor(maze_matrix, cv.COLOR_GRAY2BGR)
+
+	try:
+		maze = cv.cvtColor(maze_in, cv.COLOR_GRAY2BGR)
+		maze_matrix = maze_in
+	except:
+		maze = maze_in
+		maze_matrix = cv.cvtColor(maze_in, cv.COLOR_BGR2GRAY)
 
 	cv.namedWindow('map', cv.WINDOW_NORMAL)
 	cv.resizeWindow('map', 1200, 1200)
@@ -204,7 +208,7 @@ def initialise_points():
 
 	print("Left click to select start, right click to select end.")
 
-	cv.imshow('map', maze)
+	cv.imshow('A*', maze)
 	cv.waitKey(0)
 
 	cv.setMouseCallback('map', display_info)                                                                     
@@ -229,7 +233,8 @@ def run(image, start_in = [], end_in = [], ui_mode = 0):
 	
 	if (ui_mode):
 		initialise_points()
-		start_in = start
+		
+		#start_in = start
 		end_in = end
 		
 	print(start_in, end_in)
@@ -255,7 +260,7 @@ def run(image, start_in = [], end_in = [], ui_mode = 0):
 		open_cells.sort(key = get_f)
 		
 		if (ui_mode & ((i % 40) == 0)):
-			cv.imshow('map', maze)
+			cv.imshow('A*', maze)
 			cv.waitKey(1)
 			
 		i += 1
@@ -270,14 +275,14 @@ def run(image, start_in = [], end_in = [], ui_mode = 0):
 
 	# A final display of victory
 	if (ui_mode):
-		cv.imshow('map', maze)
-		cv.imshow('map', path_array)
+		cv.imshow('A*', maze)
+		cv.imshow('A*', path_array)
 
 		cv.imwrite("path_array.png", path_array)
 
 		print("Elapsed Time: %.4f seconds" % (toc - tic))
 		
-		cv.waitKey(0)
+		cv.waitKey(1000)
 		cv.destroyAllWindows()
 		
 	return path_array, start

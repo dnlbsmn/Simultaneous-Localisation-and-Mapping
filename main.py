@@ -14,40 +14,23 @@ import bot_move_lib as bm
 import landmark_generation_lib as lg
 import particle_filtering_lib as pf
 
-UI_mode = 1
-
 ### ===================================== ###
 # DEFINING FUNCTIONS
 
-def initialise():
-	dr.initialise_matrices(300)
-	dr.initialise_tan()
-
-	sb.startUp()
-	sb.readCoreData()
-	sleep(2)
-
-	print("Battery voltage:", sb.botBatt, "V")
-	
-def display_local_map():
-	global view
-
-	cv.imshow("local map", view) 
-	#cv.imwrite("sample_corner_1", view)
+# Displays the observed and global maps
+def display_maps():
+	window = np.concatenate((dr.global_map, dr.global_preview), axis=1)
+	cv.imshow("Map generation", window) 
 	cv.waitKey(1)	
 
-def display_global_map():
-	cv.imshow("global map", dr.global_map) 
-	#cv.imwrite("sample_corner_1", view)
-	#dr.global_map  = lg.clean_image_for_lm(dr.global_map)
-	cv.waitKey(1)	
-
-def init_slit():
+# Reads the slit of the depth sensor
+def read_slit():
 	depth_array = sb.imgDepth
 	depth_slice = dr.convert_to_slice(depth_array)
 
 	return depth_slice
 	
+# Using a given slice writes landmarks to an array
 def observe_landmarks(slyce_1d):
 	global view, observed_landmarks
 	
@@ -55,29 +38,22 @@ def observe_landmarks(slyce_1d):
 
 	dr.project_slit(slyce_1d)
 	view = lg.clean_local_for_lm(dr.local_map)
-	bare_view = view
-
-	#cv.imshow('Harris Corners', view)
-	#cv.waitKey(0)
 	
+	# Extracts the landmarks from the current view
 	observed_landmarks = lg.landmarks_from_slice(view, ui_mode=1)
 	linked_points = dr.derectify_points(observed_landmarks)
-	linked_landmarks = lg.landmark_filter(linked_points, bare_view, ui_mode=1)
+	linked_landmarks = lg.landmark_filter(linked_points, view, ui_mode=1)
 
+	# Clears out old observed landmarks and writes new ones
 	observed_landmarks = []
 	
 	for point in linked_landmarks:
 		observed_landmarks.append([point[0][0] - 319, point[0][1]])
 		
 	print("New landmarks: ", observed_landmarks)
-	return 
-		
-def load_global_map():
-	global maze
+	return
 
-	maze = cv.imread("cleaned.png")
-	pf.landmarks = lg.landmarks_from_global(cv.cvtColor(maze, cv.COLOR_BGR2GRAY), ui_mode = 0)
-
+# Renders the bot with coordinates on a given display
 def render_bot(x1, y1, heading, image):
 	heading = heading * math.pi / 180
 
@@ -90,96 +66,147 @@ def render_bot(x1, y1, heading, image):
 ### ===================================== ###
 # INITIALISATION	
 	
-initialise()
-#load_global_map()
+dr.initialise_matrices(300)
+dr.initialise_tan()
+
+sb.startUp()
+sb.readCoreData()
+sleep(2)
+
+print("Battery voltage:", sb.botBatt, "V")
 
 x = 300
 y = 300
 bm.heading_offset = 0
 
+# Do you want to see a bunch of windows?
+UI_mode = 1
+
 ### ===================================== ###
-# TESTBENCH
+# ACTUAL MAIN
 
 ########################
-# Map generation stage
+# Map Generation Stage #
 ########################
 
-
-slyce_1d = init_slit()
+# Gets the initial readings from the bot
+slyce_1d = read_slit()
 dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
-display_global_map()
-
-# Spin on the spot and generate a map
-for i in range(7):
-	
-	bm.relative_rotate(45)
-	cv.waitKey(3000)
-
-	slyce_1d = init_slit()
-	dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
-	display_global_map()
-
-	dr.global_preview = dr.global_map.copy()
-	render_bot(x, y, bm.get_heading(), dr.global_preview)
-	cv.imshow("Preview", dr.global_preview)
-	cv.waitKey(10)
+display_maps()
 	
 # Go through the user controlled map generation
 while True:	
+	# Assigning all the keys for the user input
 	print("Press Q to end map generation")
 	print("Press M for relative move")
 	print("Press R for relative rotate")
 	print("Press S to take a scan")
-	key = cv.waitKey(0) & 0xFF
+	print("Press A for an A* move")
+	print("Press F for a full rotate scan")
+	key = input()
 
-	# finalise map
-	if (key == ord('q')):
+	# Finalise the global map and exit
+	if (key == 'q'):
 		cv.imwrite("generated_map.png", dr.global_map)
 		break
 
-	# relative move by user defined input
-	elif (key == ord('m')):
+	# Relative move by user defined input
+	elif (key == 'm'):
+		# Catch dumb stuff
 		try: 
 			dist = int(input('Distance (cm): '))
 		except:
 			continue
+
 		x, y = bm.relative_move(dist, x, y)
+
+		# Displaying the movement
 		dr.global_preview = dr.global_map.copy()
 		render_bot(x, y, bm.get_heading(), dr.global_preview)
-		cv.imshow("Preview", dr.global_preview)
+		display_maps()
 
-	# relative rotate by user defined input
-	elif (key == ord('r')):
+	# Relative rotate by user defined input
+	elif (key == 'r'):
+		# Catch dumb stuff
 		try:
 			angle = int(input('Angle (deg): '))
 		except:
 			continue
+
 		bm.relative_rotate(angle)
+
+		# Displaying the movement
 		dr.global_preview = dr.global_map.copy()
 		render_bot(x, y, bm.get_heading(), dr.global_preview)
-		cv.imshow("Preview", dr.global_preview)
+		display_maps()
 
-	# take a scan 
-	elif (key == ord('s')):
-		slyce_1d = init_slit()
+	# Execute an A* movement according to the user defined end point
+	elif (key == 'a'):
+		# Generating areas where the bot can traverse and running A*
+		traverse_map = cv.dilate(pf.obstacle_map, np.ones((18, 18)), iterations = 1)
+		path, start = al.run(traverse_map, [int(x), int(y)], [330, 300], ui_mode=1)
+
+		# Converting the basic A* vectors to something better
+		path_4_ui = cv.addWeighted(traverse_map, 0.3, path, 1, 0)
+		vectors = pp.convert_path_to_vectors(path, start, ui_mode=1)
+		render_bot(x, y, bm.get_heading(), path_4_ui)
+		vectors_merged = pp.merge_vectors(vectors, traverse_map, path_4_ui, ui_mode=1)
+
+		# Convert to correct angles and execute movements
+		for vector in vectors_merged:
+			vector[2] -= 90
+
+			bm.relative_rotate(bm.angle_difference(-vector[2], bm.get_heading()))
+			print(bm.angle_difference(-vector[2], bm.get_heading()))
+			cv.waitKey(1000)
+
+			x, y = bm.relative_move(vector[1], x, y)
+
+			# Displaying the movement
+			render_bot(x, y, bm.get_heading(), path_4_ui)
+			cv.imshow("Path planning", path_4_ui)
+			cv.waitKey(1000)
+
+	# Spin on the spot and generate a map
+	elif (key == 'f'):
+
+		slyce_list = []
+		full_spin = np.zeros((601, 601), dtype = np.uint8)
+
+		slyce_1d = read_slit()
+		slyce_list.append([slyce_1d, sb.imuYaw])
+		dr.interpret_slit(full_spin, slyce_1d, x, y, sb.imuYaw, 255)
+		display_maps()
+
+		for i in range(7):
+			# Rotate and wait until things have settled
+			bm.relative_rotate(45)
+			cv.waitKey(3000)
+
+			# Records the observation and direction of the bot
+			slyce_1d = read_slit()
+			slyce_list.append([slyce_1d, sb.imuYaw])
+			dr.interpret_slit(full_spin, slyce_1d, x, y, sb.imuYaw, 255)
+			display_maps()
+
+			# Displaying the movement
+			dr.global_preview = dr.global_map.copy()
+			render_bot(x, y, bm.get_heading(), dr.global_preview)
+			display_maps()
+
 		print("Use WASD to correct robot position")
 		print("Use ZX to correct robot heading")
 		print("Press Q to solidify scan")
 		print("Press R to delete last scan\n")
 
 		while True:
-			# display perceived map
-			dr.global_preview = dr.global_map.copy()
-			dr.interpret_slit(dr.global_preview, slyce_1d, x, y, bm.get_heading(), 127)
-			render_bot(x, y, bm.get_heading(), dr.global_preview)
-			cv.imshow("Preview", dr.global_preview)
-			
 			key = cv.waitKey(0) & 0xFF
 
 			# display solidified map
 			if (key == ord('q')):
-				dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
-				display_global_map()
+				for i in range(8):
+					dr.interpret_slit(dr.global_map, slyce_list[i][0], x, y, slyce_list[i][1]+bm.heading_offset, 255)
+				display_maps()
 				break
 
 			# delete scan without solidifying
@@ -199,92 +226,132 @@ while True:
 				bm.heading_offset += 1
 			elif (key == ord('x')):
 				bm.heading_offset -= 1
-		
+
+			dr.global_preview = dr.global_map.copy()
+			for i in range(8):
+				dr.interpret_slit(dr.global_preview, slyce_list[i][0], x, y, slyce_list[i][1]+bm.heading_offset, 127)
+
+			render_bot(x, y, bm.get_heading(), dr.global_preview)
+			display_maps()
+
+	# Take a scan of the current view
+	elif (key == 's'):
+		slyce_1d = read_slit()
+		print("Use WASD to correct robot position")
+		print("Use ZX to correct robot heading")
+		print("Press Q to solidify scan")
+		print("Press R to delete last scan\n")
+
+		while True:
+			# Display perceived map
+			dr.global_preview = dr.global_map.copy()
+			dr.interpret_slit(dr.global_preview, slyce_1d, x, y, bm.get_heading(), 127)
+			render_bot(x, y, bm.get_heading(), dr.global_preview)
+			display_maps()
+			
+			key = cv.waitKey(0) & 0xFF
+
+			# Display the global and local map
+			if (key == ord('q')):
+				dr.interpret_slit(dr.global_map, slyce_1d, x, y, bm.get_heading(), 255)
+				display_maps()
+				break
+
+			# Delete scan without solidifying
+			elif (key == ord('r')):
+				break
+
+			# Correct robot position/heading
+			elif (key == ord('w')):
+				y -= 1
+			elif (key == ord('a')):
+				x -= 1
+			elif (key == ord('s')):
+				y += 1
+			elif (key == ord('d')):
+				x += 1
+			elif (key == ord('z')):
+				bm.heading_offset += 1
+			elif (key == ord('x')):
+				bm.heading_offset -= 1
 
 maze = cv.imread("generated_map.png")
 maze = cv.cvtColor(maze, cv.COLOR_BGR2GRAY)
 
-maze = lg.clean_global_for_lm(maze)
-cv.imshow("display", maze)
-cv.waitKey(0)
+#maze = lg.clean_global_for_lm(maze)
+#cv.imshow("maze", maze)
+#cv.waitKey(0)
 
-cv.imwrite("cleanboi.png", maze)
-
+cv.imwrite("unclean.png", maze)
+maze = cv.imread("cleanboi (copy).png")
 pf.landmarks = lg.landmarks_from_global(maze, ui_mode=1)
-cv.imshow("Harris Corners", maze)
+cv.imshow("Landmark generation", maze)
 cv.waitKey(0)
 print(pf.landmarks)
 
-
 ########################
-# Localisation stage
+#  Localisation Stage  #
 ########################
 
 pf.initialise_display(maze)
-pf.initialise(maze, ui_mode = 1)
+pf.initialise(cv.dilate(maze, np.ones((18, 18)), iterations = 1), ui_mode = 1)
 
 while True:
-	#observe_landmarks()
-	#display_local_map()
-
-	for i in range(1):
-		slyce_1d = init_slit()
+	# Rotating 45 degrees in a full circle and localising
+	for i in range(7):
+		slyce_1d = read_slit()
 		observe_landmarks(slyce_1d)
-
-		#head = sb.imuYaw
-		#dr.interpret_slit(slyce_1d, x, y, head)
-		#display_global_map()
-		display_local_map()
 		
 		print("What the for loop sees: ", observed_landmarks)
 
+		# Stepping through if anything has been seen otherwise don't
 		if observed_landmarks == []:
 			print("No landmarks found")
 		else:
-			for i in range(1):
-				pf.update_step(observed_landmarks, ui_mode = 1)
-				pf.render_particle(pf.particles[0])
-				pf.resample_step(ui_mode = 1)
+			pf.update_step(observed_landmarks, ui_mode = 1)
+			pf.render_particle(pf.particles[0])
+			pf.resample_step(ui_mode = 1)
 		
+		# Actually making the bot rotate
 		print("rotation start")
 		bm.relative_rotate(45)
 		sleep(2)
 		print("rotation end")
 		pf.move_step(0, 45, ui_mode = 1)
-		print("display done")
 
-
+	# Saving the global map once done
 	if cv.waitKey(1) & 0xFF == ord('q'):
-		cv.imwrite("generated_map.png", dr.global_map)
+		cv.imwrite("images/generated_map.png", dr.global_map)
 		break
 		
+	# Doing the final filtering of particles
 	print("final display")
 	pf.update_step(observed_landmarks, ui_mode = 1)
 	pf.render_particle(pf.particles[0])
-	cv.imshow("display", pf.display)
+	cv.imshow("Particle filter", pf.display)
 
 	cv.waitKey(0)
 	break
 	
-
 ########################
-# A STAR STAGE
+#  Pathfinding Stage   #
 ########################
-x = pf.particle[0]['position'][0]
-y = pf.particle[0]['position'][1]
 
-traverse_map = cv.dilate(maze, np.ones(18, 18), iterations = 1)
+# Get the current coordinates of the robot
+x = int(round(pf.particles[0]['position'][0]))
+y = int(round(pf.particles[0]['position'][1]))
 
-path, start = al.run(traverse_map, [x, y], [330, 300], ui_mode=1)
+# Generating areas where the bot can traverse and running A*
+traverse_map = cv.dilate(pf.obstacle_map, np.ones((18, 18)), iterations = 1)
+path, start = al.run(traverse_map, [int(x), int(y)], [330, 300], ui_mode=1)
 
+# Converting the basic A* vectors to something better
 if (UI_mode): path_4_ui = cv.addWeighted(traverse_map,0.3,path,1,0)
-
 vectors = pp.convert_path_to_vectors(path, start, ui_mode=1)
-
 render_bot(x, y, bm.get_heading(), path_4_ui)
-
 vectors_merged = pp.merge_vectors(vectors, traverse_map, path_4_ui, ui_mode=1)
 
+# Converting and executing the vector movements
 for vector in vectors_merged:
 	vector[2] -= 90
 
@@ -294,15 +361,25 @@ for vector in vectors_merged:
 
 	x, y = bm.relative_move(vector[1], x, y)
 	render_bot(x, y, bm.get_heading(), path_4_ui)
-	cv.imshow("path", path_4_ui)
+	cv.imshow("Path planning", path_4_ui)
 	cv.waitKey(1000)
 
 cv.waitKey(0)
 
+print("Bye bye")
 sb.shutDown()
 
 ### ================================ ###
 # UNUSED STUFF
+
+'''	
+# Loads the global map and finds all the corners
+def load_global_map():
+	global maze
+
+	maze = cv.imread("cleaned.png")
+	pf.landmarks = lg.landmarks_from_global(cv.cvtColor(maze, cv.COLOR_BGR2GRAY), ui_mode = 0)
+'''
 
 '''	
 	for i in range(5):
@@ -408,4 +485,3 @@ vectors = path_planner.convert_path_to_vectors(path, start, 0)
 
 path_planner.merge_vectors(vectors, map, path_4_ui, UI_mode) #obstacle check potentially not working
 '''
-

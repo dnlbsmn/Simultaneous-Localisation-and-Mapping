@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 from constants import *
 
-def landmarks_from_global(image, ui_mode = 0):
+def landmarks_from_global(input_image, ui_mode = 0):
 	'''
 	extract_landmarks takes an image that has closed contours and returns an array of corners
 
@@ -12,6 +12,12 @@ def landmarks_from_global(image, ui_mode = 0):
 
 	landmarks = []
 
+	try:
+		image = cv.cvtColor(input_image, cv.COLOR_BGR2GRAY)
+	except:
+		image = input_image
+
+
 	harris_corners = cv.cornerHarris(image, GLOBAL_CORNER_SIZE, GLOBAL_SOBEL, GLOBAL_K)
 	ret, harris_corners = cv.threshold(harris_corners, 127, 255, cv.THRESH_BINARY)
 	harris_corners = harris_corners.astype(np.uint8)
@@ -19,7 +25,7 @@ def landmarks_from_global(image, ui_mode = 0):
 	contours, hierarchy = cv.findContours(harris_corners, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 	
 	if (ui_mode):
-		cv.imshow('Harris Corners', harris_corners)
+		cv.imshow("Landmark generation", harris_corners)
 		cv.waitKey(0)
 
 		kernel = np.ones((7,7), np.uint8)
@@ -27,7 +33,7 @@ def landmarks_from_global(image, ui_mode = 0):
 
 		image[harris_corners > 0.003 * harris_corners.max()] = 128
 	
-		cv.imshow('Harris Corners', image)
+		cv.imshow("Landmark generation", image)
 		cv.waitKey(0)
 
 	for contour in contours:
@@ -64,13 +70,13 @@ def landmarks_from_slice(image, ui_mode = 0):
 	contours, hierarchy = cv.findContours(harris_corners, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
 			
 	if (ui_mode):
-		cv.imshow('Harris Corners', harris_corners)
+		cv.imshow("Landmark generation", harris_corners)
 		#cv.waitKey(0)
 
-		kernel = np.ones((3,3), np.uint8) #7, 7
+		kernel = np.ones((3,3), np.uint8)
 		harris_corners = cv.dilate(harris_corners, kernel, iterations= 2)
 
-		image[harris_corners > 0.035 * harris_corners.max()] = 128
+		image[harris_corners > 0.025 * harris_corners.max()] = 63
 		
 	for contour in contours:
 		moment = cv.moments(contour)
@@ -85,7 +91,7 @@ def landmarks_from_slice(image, ui_mode = 0):
 			print("no landmarks found")
 			
 	if (ui_mode):
-		cv.imshow('Harris Corners', image)
+		cv.imshow("Landmark generation", image)
 	
 	return landmarks
 	
@@ -100,12 +106,9 @@ def landmark_filter(linked_landmarks, view, ui_mode):
 			print("omitted landmark: ", landmark)
 			continue
 		
-		
 		pass_flag = True
 		for linked_check in linked_landmarks:
 			land_check = linked_check[1]
-			#print("land_check: ", land_check)
-			#print("landmark: ", landmark)
 		
 			if (abs(landmark[0] - land_check[0]) < 40):
 				if (landmark[1] > land_check[1]):
@@ -116,7 +119,6 @@ def landmark_filter(linked_landmarks, view, ui_mode):
 			filtered_landmarks.append(linked)
 			if (ui_mode):
 				view[linked[0][1]][linked[0][0]] = 0
-				#cv.imshow('Remaining corners', view)
 
 	return filtered_landmarks
 
@@ -133,42 +135,58 @@ def clean_local_for_lm(image):
 	return image
 
 def clean_global_for_lm(image):
-	map_contours = [np.array([[0, 0], [0, 601], [601, 601], [601, 0]])]
+
+	outer_contours = [np.array([[0, 0], [0, 601], [601, 601], [601, 0]])]
+	inner_contours = []
 	image = cv.blur(image, (5, 5))
-	cv.imshow("display", image)
+
+	print("Blur")
+	cv.imshow("Landmark generation", image)
 	cv.waitKey(0)
 
-	ret, thresh = cv.threshold(image, 45, 255, cv.THRESH_BINARY)
-	image = thresh
-	cv.imshow("display", image)
+	ret, inner_image = cv.threshold(image, 50, 255, cv.THRESH_BINARY)
+	print("Threshold")
+	cv.imshow("Landmark generation", inner_image)
 	cv.waitKey(0)
 
-	contours, hierarchy = cv.findContours(image, 1, cv.RETR_TREE)
+	contoursA, hierarchy = cv.findContours(inner_image, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
+	contoursB, hierarchy = cv.findContours(inner_image, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
 	
-	for contour in contours:
+	for contour in contoursB:
 		if (cv.contourArea(contour) > 1000):
-			map_contours.append(contour)
+			outer_contours.append(contour)
 
-	image = cv.drawContours(np.zeros((601, 601), dtype=np.uint8), map_contours, 1,  255, cv.FILLED)
-	image = cv.bitwise_not(image)
+	for contour in contoursA:
+		if (cv.contourArea(contour) > 20):
+			inner_contours.append(contour)
 
-	cv.imshow("display", image)
+	print(inner_contours)
+
+	outer_image = cv.drawContours(np.zeros((601, 601), dtype=np.uint8), outer_contours, -1,  255, cv.FILLED, hierarchy = hierarchy)
+	inner_image = cv.drawContours(np.zeros((601, 601), dtype=np.uint8), inner_contours, -1,  125, 1)
+
+	print("Contour filter")
+	cv.imshow("Landmark generation", outer_image)
 	cv.waitKey(0)
 
-	image = cv.dilate(image, cv.getStructuringElement(cv.MORPH_ELLIPSE, (2, 2)), iterations = 1)
+	overall_image = cv.addWeighted(inner_image, 1, outer_image, 1, 0)
+	overall_image = cv.dilate(overall_image, cv.getStructuringElement(cv.MORPH_ELLIPSE, (2, 2)), iterations = 1)
 
-	return image
+	print("Overall image")
+	cv.imshow("Landmark generation", overall_image)
+	cv.waitKey(0)
 
-'''
+	return overall_image
+
 image = cv.imread("generated_map_one.png")
 image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 
-image = clean_image_for_lm(image)
-cv.imshow("display", image)
+image = clean_global_for_lm(image)
+cv.imshow("Landmark generation", image)
 cv.waitKey(0)
 
 #cv.imwrite("cleaned.png", image)
-
+'''
 #image = cv.imread("cleaned.png")
 #image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 lm = landmarks_from_global(image, 1)

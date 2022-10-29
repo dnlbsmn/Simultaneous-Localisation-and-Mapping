@@ -10,7 +10,10 @@ from constants import *
 def initialise(obstacle_image, ui_mode=0):
 	global landmarks, display, normal, obstacle_map
 
-	obstacle_map = cv.cvtColor(obstacle_image, cv.COLOR_BGR2GRAY)
+	try:
+		obstacle_map = cv.cvtColor(obstacle_image, cv.COLOR_BGR2GRAY)
+	except:
+		obstacle_map = obstacle_image
 
 	normal = []
 	distances = np.linspace(0, 500, 500)
@@ -25,7 +28,7 @@ def initialise(obstacle_image, ui_mode=0):
 		for lm in landmarks:
 			display[lm[1]][lm[0]] = [255, 255, 0]
 
-		cv.imshow("display", display)
+		cv.imshow("Particle filter", display)
 		cv.waitKey(0)
 
 # initialises a particle as a dictionary of position, rotation and weight. Returns none if position is invalid
@@ -58,8 +61,8 @@ def gaussian(x, mu, sig):
 def initialise_display(image):
 	global display
 
-	cv.namedWindow("display", cv.WINDOW_NORMAL)
-	cv.resizeWindow("display", (960, 720))
+	cv.namedWindow("Particle filter", cv.WINDOW_NORMAL)
+	cv.resizeWindow("Particle filter", (960, 720))
 	display = image
 
 ### ===================================== ###
@@ -107,7 +110,7 @@ def move_step(linear, angular, ui_mode=0):
 	particles = resample
 
 	if (ui_mode):
-		cv.imshow("display", display)
+		cv.imshow("Particle filter", display)
 		cv.waitKey(0)
 
 # Generates a particle given an attempt to move the bot
@@ -191,7 +194,7 @@ def resample_step(total_count=RESAMPLED_PARTICLES, remnant_count=TRIMMED_PARTICL
 	resample_particles(total_count, ui_mode)
 
 	if (ui_mode):
-		cv.imshow("display", display)
+		cv.imshow("Particle filter", display)
 		cv.waitKey(0)
 
 # outputs the weight of a given particle
@@ -294,7 +297,7 @@ def render_particle(particle):
 	cv.circle(render_display, (x1, y1), 35, [128, 0, 128], 1)
 	cv.line(render_display, (x1, y1), (x2, y2), [196, 0, 196], 1)
 
-	cv.imshow("display", render_display)
+	cv.imshow("Particle filter", render_display)
 	cv.waitKey(0)
 
 # Displays the particles on the matrix
@@ -311,7 +314,7 @@ def example_distributions():
 		p = move_particle(p1, 30, 0.5)
 		display_particle(p, [255, 255, 0])
 
-	cv.imshow("display", display)
+	cv.imshow("Particle filter", display)
 	cv.waitKey(0)
 
 def display_info(event, x, y, flags, param):
@@ -323,7 +326,7 @@ def display_info(event, x, y, flags, param):
 
 		display[int(particles[100]["position"][1])][int(particles[100]["position"][0])] = [0, 255, 255]
 
-		cv.imshow("display", display)
+		cv.imshow("Particle filter", display)
 
 ### ===================================== ###
 # PARTICLE FILTER
@@ -345,7 +348,7 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 	# Wait for the next movement and repeat
 
 	if (ui_mode):
-		cv.imshow("display", display)
+		cv.imshow("Particle filter", display)
 		cv.waitKey(0)
 
 ### ===================================== ###

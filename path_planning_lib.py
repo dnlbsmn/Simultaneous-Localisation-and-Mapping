@@ -48,7 +48,7 @@ def path_to_vector(path_array, start, ui_mode):
 						break
 					else:
 						if (ui_mode == 1):
-							cv.imshow("path", path_array)
+							cv.imshow("Path planning", path_array)
 							print("current_vector: ", vector)
 							print("current_heading: ", current_heading)
 							print("x,y ", x, " ", y)
@@ -60,7 +60,7 @@ def path_to_vector(path_array, start, ui_mode):
 
 	vectors.append(vector)
 	if (ui_mode == 1):
-		cv.imshow("path", path_array)
+		cv.imshow("Path planning", path_array)
 		print("current_vector: ", vector)
 		print("current_heading: ", current_heading)
 		print("x,y ", x, " ", y)
@@ -70,11 +70,11 @@ def path_to_vector(path_array, start, ui_mode):
 	return vectors
 
 # intermediate function for ui initilise
-def convert_path_to_vectors(path, start, ui_mode): # map array, start[x,y], ui_mode
+def convert_path_to_vectors(path, start, ui_mode):
 	if (ui_mode == 1):
-		cv.namedWindow("path", cv.WINDOW_NORMAL)
-		cv.resizeWindow("path", (1200, 960))
-		cv.imshow("path", path)
+		cv.namedWindow("Path planning", cv.WINDOW_NORMAL)
+		cv.resizeWindow("Path planning", (1200, 960))
+		cv.imshow("Path planning", path)
 		cv.waitKey(0)
 	
 	vectors = path_to_vector(path, start, ui_mode)
@@ -147,9 +147,9 @@ def merge_vectors(vectors, path, path_ui, ui_mode):
 				path_ui[vectors[v_index][0][1]][vectors[v_index][0][0]] = 60
 	
 	if (ui_mode == 1):
-		cv.namedWindow("path", cv.WINDOW_NORMAL)
-		cv.resizeWindow("path", (1200, 960))
-		cv.imshow("path", path_ui)
+		cv.namedWindow("Path planning", cv.WINDOW_NORMAL)
+		cv.resizeWindow("Path planning", (1200, 960))
+		cv.imshow("Path planning", path_ui)
 		cv.waitKey(0)
 	return vectors_merged
 			
