@@ -25,16 +25,19 @@ def corner_distribution():
 	for distance in distances:
 		corner_normal.append(gaussian(distance, 0, MAX_CORNER_ERROR / 3))
 
-# Taking two sets of corners and returning the probability of a match
-def match_probability(corners_ones, corners_twos):
-
+# Taking two sets of corners and returning the probability of a match excluding excess corners
+def match_probability(primary_corners, secondary_corners):
 	corner_probability = 1
 
 	# Generating the product of all the corner match probabilities
-	for corners_one in corners_ones:
-		for corners_two in corners_twos:
-			corner_distance = int(round(math.dist(corners_one, corners_two)))
-			corner_probability *= corner_normal[corner_distance]
+	for primary in primary_corners:
+		corner_distances = []
+		
+		for secondary in secondary_corners:
+			corner_distance = int(round(math.dist(primary, secondary)))
+			corner_distances.append(corner_distance)
+		
+		corner_probability *= corner_normal[min(corner_distances)]
 
 	return corner_probability
 
@@ -42,8 +45,8 @@ def match_probability(corners_ones, corners_twos):
 def match_corners(global_corners, local_corners):
 	match_probabilities = []
 
-	for global_corner in global_corners:
-		for local_corner in local_corners:
+	for local_corner in local_corners:
+		for global_corner in global_corners:
 			# Finding the difference between two specific corners
 			x_shift = global_corner[0] - local_corner[0]
 			y_shift = global_corner[1] - local_corner[1]
