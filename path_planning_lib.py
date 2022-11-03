@@ -65,7 +65,6 @@ def path_to_vector(path_array, start, ui_mode):
 		print("current_heading: ", current_heading)
 		print("x,y ", x, " ", y)
 		print(vectors)
-		cv.waitKey(0)
 		cv.destroyAllWindows()
 	return vectors
 

@@ -6,7 +6,7 @@ RAD_PER_PIXEL = 0.001554434
 RAD_OFFSET = 0.497418837
    
 # Initialize or reset the matrices
-def initialise_matrices(resolution):
+def initialise_matrices():
     global slit_array, tan_array, local_map, global_map, global_preview
 
     slit_array = np.zeros((640), dtype = np.uint16)
@@ -26,8 +26,8 @@ def interpret_slit(gmap, slit_array, x, y, heading, weight):
 
 	# Manipulating the left side
     for pixel in range(320):
-        if (slit_array[319 - pixel] > 0):
-            pix_y = float(slit_array[319 - pixel])
+        if (slit_array[319 - pixel] > 20):
+            pix_y = slit_array[319 - pixel]
             pix_x = slit_array[319 - pixel] * tan_array[319 - pixel]
 
             r = math.sqrt(pix_x * pix_x + pix_y * pix_y)
@@ -40,8 +40,8 @@ def interpret_slit(gmap, slit_array, x, y, heading, weight):
             
     # Manipulating the right side
     for pixel in range(320):
-        if (slit_array[639 - pixel] > 0):
-            pix_y = float(slit_array[639 - pixel])
+        if (slit_array[639 - pixel] > 20):
+            pix_y = slit_array[639 - pixel]
             pix_x = slit_array[639 - pixel] * tan_array[pixel]
 
             r = math.sqrt(pix_x * pix_x + pix_y * pix_y)
@@ -61,25 +61,6 @@ def uncorrected_slit(slit_array):
 		
 	return uncorrected_view
 	
-# Clean up noise in generated map
-def clean_image(map):
-    map = cv.blur(map, (8, 8))
-    cv.imshow("display", map)
-    cv.waitKey(0)
-
-    ret, thresh = cv.threshold(map, 30, 255, cv.THRESH_BINARY)
-    map = thresh
-    cv.imshow("display", map)
-    cv.waitKey(0)
-
-    map = cv.erode(map, np.ones((4, 4)), iterations = 1)
-    cv.imshow("display", map)
-    cv.waitKey(0)
-
-    map = cv.dilate(map, np.ones((4, 4)),iterations = 1)
-    cv.imshow("display", map)
-    cv.waitKey(0)
-
 # Takes the average of an eight pixel thick slice
 def average_slice(slyce):
 	averaged_slice = np.zeros(640, dtype=np.float)
@@ -102,6 +83,9 @@ def convert_to_slice(depth_image):
     slyce = depth_image[236:244][:]
     slyce = depth_to_centimetres(slyce)
     slyce_1d = average_slice(slyce)
+    for i in range(len(slyce_1d)):
+        if (slyce_1d[i] > 205):
+            slyce_1d[i] = None
 
     return slyce_1d
 	
@@ -109,33 +93,18 @@ def convert_to_slice(depth_image):
 def project_slit(slit_array):
 
     for pixel in range(320):
-        y = float(slit_array[319 - pixel])
-        x = 320 + slit_array[319 - pixel] * tan_array[319 - pixel]
+        if (slit_array[319 - pixel] > 0):
+            y = slit_array[319 - pixel]
+            x = 320 + slit_array[319 - pixel] * tan_array[319 - pixel]
 
-        local_map[int(y)][int(x)] = 255
+            local_map[int(y)][int(x)] = 255
 
     for pixel in range(320):
-        y = float(slit_array[639 - pixel])
-        x = 319 - slit_array[639 - pixel] * tan_array[pixel]
+        if (slit_array[639 - pixel] > 0):
+            y = slit_array[639 - pixel]
+            x = 319 - slit_array[639 - pixel] * tan_array[pixel]
 
-        local_map[int(y)][int(x)] = 255
-        
-# This function takes a set of linked points and returns their derectified values
-def derectify_points(points):
-	linked_points = []
-	
-	for point in points:
-		y = point[1]
-		
-		x = math.atan((point[0] - 319.5)/point[1])
-		x /= RAD_PER_PIXEL
-		x += 319.5
-		
-		derectified = [int(round(x)), int(round(y))]
-		
-		linked_points.append([point, derectified])
-	
-	return linked_points
+            local_map[int(y)][int(x)] = 255
 
 ### =============================================== ###
 # UNUSED FUNCTIONS
@@ -178,3 +147,22 @@ def interpret_slit_mirror(slit_array, x, y, heading):
             rot_pix_x = int(r*math.sin(heading + phi))
 
             global_map[rot_pix_y + y][- rot_pix_x + x + 1] = 255 
+
+# Clean up noise in generated map
+def clean_image(map):
+    map = cv.blur(map, (8, 8))
+    cv.imshow("display", map)
+    cv.waitKey(0)
+
+    ret, thresh = cv.threshold(map, 30, 255, cv.THRESH_BINARY)
+    map = thresh
+    cv.imshow("display", map)
+    cv.waitKey(0)
+
+    map = cv.erode(map, np.ones((4, 4)), iterations = 1)
+    cv.imshow("display", map)
+    cv.waitKey(0)
+
+    map = cv.dilate(map, np.ones((4, 4)),iterations = 1)
+    cv.imshow("display", map)
+    cv.waitKey(0)

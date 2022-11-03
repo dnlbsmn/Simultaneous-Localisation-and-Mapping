@@ -7,6 +7,18 @@ from constants import *
 prev_flag = False
 heading_offset = 0
 	
+### ===================================== ###
+# MOTION FUNCTIONS
+
+def execute_vector(vector, x, y):
+	vector[2] -= 90
+
+	relative_rotate(angle_difference(-vector[2], get_heading()))
+	print(angle_difference(-vector[2], get_heading()))
+
+	x, y = relative_move(vector[1], x, y)
+	return x, y
+# Rotates the robot by a relative angle
 def relative_rotate(angle):
 	error = 2
 	desired_angle = float(get_heading()) + angle
@@ -57,49 +69,7 @@ def relative_rotate(angle):
 			
 		sleep(0.1)
 
-def angle_difference(angle1, angle2):
-	if (angle1 - angle2 > 180):
-		angle1 -= 360
-		
-	if (angle1 - angle2 < -180):
-		angle1 += 360
-		
-	return angle1 - angle2
-
-def get_heading():
-	global heading_offset 
-
-	return sb.imuYaw + heading_offset	
-
-def read_encoders(l_init, r_init):
-	global l_over, r_over, r_prev, l_prev
-	
-	l = sb.encLeft
-	r = sb.encRight
-	
-	left =  (7.07*math.pi*((l / 2578) + (l_over / 2578) - (l_init / 2578)))
-	right = (7.07*math.pi*((r / 2578) + (r_over / 2578) - (r_init / 2578)))
-	
-	print(round(left*right/2, 2), end = "  \r")
-	# forward overflow catch
-	if (l_prev - l > 50000):
-		l_over  += 65535
-	
-	if (r_prev - r > 50000):
-		r_over  += 65535
-	
-	# reverse overflow catch
-	if (l_prev - l < -50000):
-		l_over  -= 65535
-		
-	if (r_prev - r < -50000):
-		r_over  -= 65535
-		
-	l_prev = l
-	r_prev = r
-			
-	return [left, right]
-
+# Moves the robot by a relative distance
 def relative_move(dist, x, y):
 	global l_prev, r_prev, l_over, r_over
 	
@@ -162,62 +132,51 @@ def relative_move(dist, x, y):
 	
 	sb.moveBot(0, 0)
 	
-'''
-sb.startUp()
-sb.readCoreData()
+### ===================================== ###
+# INPUT AND CONVERSION FUNCTIONS
 
-print(sb.botBatt)
+# Finds the difference between two angles
+def angle_difference(angle1, angle2):
+	if (angle1 - angle2 > 180):
+		angle1 -= 360
+		
+	if (angle1 - angle2 < -180):
+		angle1 += 360
+		
+	return angle1 - angle2
 
-sleep(6)
-a = sb.imuYaw
+# Obtain the current heading of the robot
+def get_heading():
+	global heading_offset 
 
-relative_rotate(0)
-sleep(2)
-relative_move(60)
-sleep(2)
-relative_rotate(-126.87)
-sleep(2)
-relative_move(100)
-sleep(2)
-relative_rotate(-143.13)
-sleep(2)
-relative_move(80)
-sleep(2)
-relative_rotate(-90)
+	return sb.imuYaw + heading_offset	
 
-relative_rotate(0)
-relative_move(5)
-relative_rotate(-180)
-relative_move(5)
-relative_rotate(-180)
-relative_move(3)
-relative_rotate(-180)
-relative_move(3)
-relative_rotate(-180)
-relative_move(15)
-relative_rotate(-180)
-relative_move(15)
-relative_rotate(-180)
-relative_move(20)
-relative_rotate(-180)
-relative_move(20)
-relative_rotate(-180)
-sleep(2)
-
-print(a)
-print(sb.imuYaw)
-
-#sb.moveBot(0, 0)
-
-sleep(1)
-rotate_set_angle(90)
-sleep(0.5)
-rotate_set_angle(90)
-sleep(0.5)
-rotate_set_angle(90)
-sleep(0.5)
-rotate_set_angle(90)
-print("Mooooooooooooooooooove")
-
-sb.shutDown()
-'''
+# Read the current motor encoder values
+def read_encoders(l_init, r_init):
+	global l_over, r_over, r_prev, l_prev
+	
+	l = sb.encLeft
+	r = sb.encRight
+	
+	left =  (7.07*math.pi*((l / 2578) + (l_over / 2578) - (l_init / 2578)))
+	right = (7.07*math.pi*((r / 2578) + (r_over / 2578) - (r_init / 2578)))
+	
+	print(round(left*right/2, 2), end = "  \r")
+	# forward overflow catch
+	if (l_prev - l > 50000):
+		l_over  += 65535
+	
+	if (r_prev - r > 50000):
+		r_over  += 65535
+	
+	# reverse overflow catch
+	if (l_prev - l < -50000):
+		l_over  -= 65535
+		
+	if (r_prev - r < -50000):
+		r_over  -= 65535
+		
+	l_prev = l
+	r_prev = r
+			
+	return [left, right]

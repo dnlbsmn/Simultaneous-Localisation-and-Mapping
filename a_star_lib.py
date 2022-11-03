@@ -187,8 +187,8 @@ def load_map(maze_in):
 		maze = maze_in
 		maze_matrix = cv.cvtColor(maze_in, cv.COLOR_BGR2GRAY)
 
-	cv.namedWindow('map', cv.WINDOW_NORMAL)
-	cv.resizeWindow('map', 1200, 1200)
+	cv.namedWindow('A*', cv.WINDOW_NORMAL)
+	cv.resizeWindow('A*', 1200, 1200)
 
 	# Setting up the parallel matrices
 
@@ -201,17 +201,14 @@ def load_map(maze_in):
 def initialise_points():
 	global start, end
 
-	cv.setMouseCallback('map', select_points)
-
-	start = [0, 0]
-	end = [0, 0]
+	cv.setMouseCallback('A*', select_points)
 
 	print("Left click to select start, right click to select end.")
 
 	cv.imshow('A*', maze)
 	cv.waitKey(0)
 
-	cv.setMouseCallback('map', display_info)                                                                     
+	cv.setMouseCallback('A*', display_info)                                                                     
 
 ### =============================================== ###
 # MAIN RUN SEQUENCE
@@ -230,21 +227,21 @@ def run(image, start_in = [], end_in = [], ui_mode = 0):
 	
 	initialise()
 	load_map(image)
-	
-	if (ui_mode):
-		initialise_points()
-		
-		#start_in = start
-		end_in = end
-		
-	print(start_in, end_in)
 
-	open_cells = [start_in]
-	path = [end_in]
-	
 	start = start_in
 	end = end_in
 
+	print(start, end)
+	
+	if (ui_mode == 1):
+		initialise_points()
+		maze[start[1]][[start[0]]] = START_COLOR
+
+	print(start, end)
+
+	open_cells = [start]
+	path = [end]
+	
 	# Iterating through the A star algorithm
 	tic = time.time()
 	print("Planning a path...")
@@ -286,9 +283,3 @@ def run(image, start_in = [], end_in = [], ui_mode = 0):
 		cv.destroyAllWindows()
 		
 	return path_array, start
-
-
-#maze = cv.imread("cleaned.png")
-#maze = cv.cvtColor(maze, cv.COLOR_BGR2GRAY)
-
-#run(maze, ui_mode = 1)

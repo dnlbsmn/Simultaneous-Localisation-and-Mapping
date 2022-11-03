@@ -45,13 +45,17 @@ SKEW_P = 0.1
 
 # For detecting corners on a global map
 GLOBAL_CORNER_SIZE = 10
-GLOBAL_SOBEL = 29
+GLOBAL_SOBEL = 15
 GLOBAL_K = 0.06
 
 # For detecting corners in a single field of view
-LOCAL_CORNER_SIZE = 10
+LOCAL_CORNER_SIZE = 8
 LOCAL_SOBEL = 27
 LOCAL_K = 0.06
 
-THRESH_HARRIS = 90 #90
+THRESH_HARRIS = 90
 
+### ===================================== ###
+# TUNING CONSTANTS FOR CORNER MATCHING
+
+MAX_CORNER_ERROR = 50

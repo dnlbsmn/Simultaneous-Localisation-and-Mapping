@@ -63,7 +63,11 @@ def initialise_display(image):
 
 	cv.namedWindow("Particle filter", cv.WINDOW_NORMAL)
 	cv.resizeWindow("Particle filter", (960, 720))
-	display = image
+	
+	try:
+		display = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+	except:
+		display = image
 
 ### ===================================== ###
 # INITIALISE STEP
@@ -111,7 +115,7 @@ def move_step(linear, angular, ui_mode=0):
 
 	if (ui_mode):
 		cv.imshow("Particle filter", display)
-		cv.waitKey(0)
+		cv.waitKey(100)
 
 # Generates a particle given an attempt to move the bot
 def move_particle(parent, linear, angular, ui_mode=0):
@@ -195,7 +199,7 @@ def resample_step(total_count=RESAMPLED_PARTICLES, remnant_count=TRIMMED_PARTICL
 
 	if (ui_mode):
 		cv.imshow("Particle filter", display)
-		cv.waitKey(0)
+		cv.waitKey(100)
 
 # outputs the weight of a given particle
 def particle_weight(particle):
@@ -274,7 +278,7 @@ def propagate_particle(parent, count, resample, ui_mode = 0):
 
 		resample.append(particle)
 	
-### =============================print(image.shape)======== ###
+### ===================================== ###
 # MISCELLANEOUS
 
 # Display the most likely particle
@@ -298,7 +302,7 @@ def render_particle(particle):
 	cv.line(render_display, (x1, y1), (x2, y2), [196, 0, 196], 1)
 
 	cv.imshow("Particle filter", render_display)
-	cv.waitKey(0)
+	cv.waitKey(100)
 
 # Displays the particles on the matrix
 def display_particle(p, color):
@@ -368,46 +372,3 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 
 ### ===================================== ###
 # TEST CODE
-'''
-landmarks = [[100, 100], [100, 200], [200, 100], [200, 200], [150, 270]]
-image = cv.imread("perfect_map.png")
-
-#create_particle(100, -1, 90, 1)
-
-initialise_display(image)
-initialise(image, ui_mode = 1)
-cv.setMouseCallback('display', display_info)  
-
-print("STEP 1")
-
-observed_landmarks = [[0, 1], [0, 101]]
-
-update_step(observed_landmarks, ui_mode = 1)
-render_particle(particles[0])
-print(particles[0])
-resample_step(ui_mode = 1)
-move_step(0, 90, ui_mode = 1)
-
-for i in range(5):
-	print("STEP TURNED")
-
-	observed_landmarks = [[0, 1], [0, 101]]
-
-	update_step(observed_landmarks, ui_mode = 1)
-	render_particle(particles[0])
-	print(particles[0])
-	resample_step(ui_mode = 1)
-	move_step(100, 0, ui_mode = 1)
-
-	print("STEP MOOVED")
-
-	observed_landmarks = [[0, 1]]
-
-	update_step(observed_landmarks, ui_mode = 1)
-	render_particle(particles[0])
-	print(particles[0])
-	resample_step(ui_mode = 1)
-	move_step(0, -90, ui_mode = 1)
-
-print("DONE")
-'''
