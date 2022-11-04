@@ -147,7 +147,7 @@ def clean_global_map(image):
 			outer_contours.append(contour)
 
 	for contour in contoursA:
-		if (cv.contourArea(contour) > 20):
+		if (cv.contourArea(contour) > 50):
 			inner_contours.append(contour)
 
 	print(inner_contours)
@@ -246,33 +246,3 @@ def landmark_filter(linked_landmarks, view, ui_mode):
 				view[linked[0][1]][linked[0][0]] = 0
 
 	return filtered_landmarks
-
-'''
-image = cv.imread("generated_map_special.png")
-image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-
-image = clean_traverse_map(image)
-cv.imshow("Landmark generation", image)
-cv.waitKey(0)
-
-image = clean_global_map(image)
-cv.imshow("Landmark generation", image)
-cv.waitKey(0)
-
-lm = landmarks_from_global(image, 1)
-
-cv.imshow("Harris Corners", image)
-cv.waitKey(0)
-print(lm)
-
-image = cv.imread("super_generated_map.png")
-image = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
-
-image2 = cv.imread("Imagine.png")
-image2 = cv.cvtColor(image2, cv.COLOR_BGR2GRAY)
-
-imug = cv.addWeighted(image, 1, image2, 0.5, 0)
-
-cv.imshow("Harris Corners", imug)
-cv.waitKey(0)
-'''

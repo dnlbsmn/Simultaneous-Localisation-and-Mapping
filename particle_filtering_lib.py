@@ -369,6 +369,3 @@ def particle_filter(observed_landmarks, ui_mode = 0):
 # Updated particles = ORANGE
 # Trimmed particles = GREEN
 # Propagated particles = RED
-
-### ===================================== ###
-# TEST CODE

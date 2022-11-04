@@ -3,7 +3,6 @@
 
 from time import sleep
 import math
-from turtle import heading
 import numpy as np
 import cv2 as cv
 
@@ -162,7 +161,7 @@ def path_find(end, ui_mode = 1):
 	global traverse_map, x, y
 	# Generating areas where the bot can traverse and running A*
 	cleaned_map = lg.clean_traverse_map(dr.global_map)
-	traverse_map = cv.dilate(cleaned_map, np.ones((22, 22)))
+	traverse_map = cv.dilate(cleaned_map, np.ones((27, 27)))
 	path, start = al.run(traverse_map, [int(x), int(y)], end, ui_mode = ui_mode)
 
 	# Converting the basic A* vectors to something better
@@ -213,8 +212,6 @@ print("Battery voltage:", sb.botBatt, "V")
 
 origin = [300, 300]
 
-print(phantom_corner([-57, -200]))
-
 x = origin[0]
 y = origin[1]
 bm.heading_offset = 0
@@ -227,7 +224,7 @@ foundational_landmarks = []
 # 4 = Just see the bot input
 # 5 = Manual generate + Particle filter
 
-run_mode = 2
+run_mode = 5
 
 ### ===================================== ###
 # ACTUAL MAIN
@@ -293,14 +290,9 @@ if ((run_mode == 1)):
 			path_find(origin, ui_mode = 1)
 
 	display_maps()
-	cv.waitKey(0)
+	cv.waitKey(10)
 
-	# Saving and loading the output
-	maze = lg.clean_global_map(dr.global_map)
-	cv.imshow("maze", maze)
-	cv.waitKey(0)
-
-	cv.imwrite("Automatic Map.png", maze)
+	cv.imwrite("generated_map.png", dr.global_map)
 
 if ((run_mode == 3) or (run_mode == 5)):
 	slyce_list = []
@@ -343,6 +335,8 @@ if ((run_mode == 3) or (run_mode == 5)):
 
 	for i in range(len(slyce_list)):
 		dr.interpret_slit(dr.global_map, slyce_list[i][0], x, y, slyce_list[i][1] + bm.heading_offset, 255)
+	
+	#dr.global_map = cv.cvtColor(cv.imread("images/manual_generated_two.png"), cv.COLOR_BGR2GRAY)
 
 	# Go through the manual map generation
 	while True:	
@@ -353,6 +347,7 @@ if ((run_mode == 3) or (run_mode == 5)):
 		print("Press S to take a scan")
 		print("Press A for an A* move")
 		print("Press F for a full rotate scan")
+		print("Press N for a full rotate scan with manual localisation")
 		key = input()
 
 		# Finalise the global map and exit
@@ -394,12 +389,12 @@ if ((run_mode == 3) or (run_mode == 5)):
 			# Generating areas where the bot can traverse and running A*
 			cleaned_map = lg.clean_traverse_map(dr.global_map)
 			traverse_map = cv.dilate(cleaned_map, np.ones((22, 22)), iterations = 1)
-			path, start = al.run(traverse_map, [int(x), int(y)], [330, 300], ui_mode=1)
+			path, start = al.run(traverse_map, [int(x), int(y)], [330, 300], ui_mode = 1)
 
 			# Converting the basic A* vectors to something better
 			path_4_ui = cv.addWeighted(traverse_map, 0.3, path, 1, 0)
 			vectors = pp.convert_path_to_vectors(path, start, ui_mode=1)
-			vectors_merged = pp.merge_vectors(vectors, traverse_map, path_4_ui, ui_mode=1)
+			vectors_merged = pp.merge_vectors(vectors, traverse_map, path_4_ui, ui_mode = 1)
 			render_bot(x, y, bm.get_heading(), path_4_ui)
 			cv.waitKey(100)
 
@@ -430,7 +425,7 @@ if ((run_mode == 3) or (run_mode == 5)):
 			display_maps()
 
 			# Spin around enough times
-			for i in range(6):
+			for i in range(7):
 				# Rotate and wait until things have settled
 				bm.relative_rotate(45)
 				cv.waitKey(3000)
@@ -503,25 +498,14 @@ if ((run_mode == 3) or (run_mode == 5)):
 				display_maps()
 
 	display_maps()
-	cv.waitKey(0)
-
-	maze = cv.imread("generated_map.png")
-	maze = cv.cvtColor(maze, cv.COLOR_BGR2GRAY)
-
-	maze = lg.clean_traverse_map(maze)
-	maze = lg.clean_global_map(maze)
-	cv.imshow("maze", maze)
-	cv.waitKey(0)
-
-	cv.imwrite("Manual Map.png", maze)
-
+	cv.waitKey(10)
 
 maze = cv.imread("generated_map.png")
 maze = cv.cvtColor(maze, cv.COLOR_BGR2GRAY)
 
 maze = lg.clean_traverse_map(maze)
 maze = lg.clean_global_map(maze)
-
+cv.imwrite("clean_generated_map.png", maze)
 
 ########################
 #  Localise and Move   #
@@ -529,10 +513,6 @@ maze = lg.clean_global_map(maze)
 
 if ((run_mode == 2) or (run_mode == 5)):
 	pf.landmarks = lg.landmarks_from_global(maze, ui_mode = 1)
-	
-	#print(foundational_landmarks) # TEMP todo
-	#for landmark in foundational_landmarks:
-	#	maze[landmark[1]][landmark[0]] = 100
 
 	cv.imshow("Landmark generation", maze)
 	cv.waitKey(0)
@@ -625,6 +605,3 @@ if (run_mode == 4):
 print("Bye bye")
 cv.waitKey(0)
 sb.shutDown()
-
-### ================================ ###
-# UNUSED STUFF

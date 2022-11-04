@@ -58,4 +58,5 @@ THRESH_HARRIS = 90
 ### ===================================== ###
 # TUNING CONSTANTS FOR CORNER MATCHING
 
+# Approximate max distance for corner matching
 MAX_CORNER_ERROR = 50

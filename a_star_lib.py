@@ -214,7 +214,7 @@ def initialise_points():
 # MAIN RUN SEQUENCE
 
 def run(image, start_in = [], end_in = [], ui_mode = 0):
-	global start, end, open_cells
+	global start, end, open_cells, maze
 	"""
 	a_star_run takes a map and start and end points and finds the optimal path between them
 	
@@ -234,8 +234,11 @@ def run(image, start_in = [], end_in = [], ui_mode = 0):
 	print(start, end)
 	
 	if (ui_mode == 1):
-		initialise_points()
 		maze[start[1]][[start[0]]] = START_COLOR
+		maze = cv.circle(maze, (start[0], start[1]), 17, START_COLOR, 1)
+		cv.imshow('A*', maze)
+		cv.waitKey(10)
+		initialise_points()
 
 	print(start, end)
 

@@ -2,6 +2,9 @@ import cv2 as cv
 import numpy as np
 import math
 
+### ===================================== ###
+# BASIC FUNCTIONS
+
 # creates a vector object
 def create_vector(position, magnitude, heading):
 	vector = [position, magnitude, heading]
@@ -19,6 +22,9 @@ def change_to_heading(dx, dy):
 	if ((dx == -1) & (dy == -1)): return -135
 	print("Heading not found")
 	if ((dx == 0) & (dy == 0)): return 253
+
+### ===================================== ###
+# CONVERSION FUNCTIONS
 
 # follows a continuous grayscale path from start to end generating an array of vector objects
 def path_to_vector(path_array, start, ui_mode):
@@ -79,6 +85,7 @@ def convert_path_to_vectors(path, start, ui_mode):
 	vectors = path_to_vector(path, start, ui_mode)
 	return vectors
 
+# Combines pairs of vectors if it does result in a collision
 def merge_vectors(vectors, path, path_ui, ui_mode): 
 	print(vectors)
 	print("Merged vectors:")
@@ -151,7 +158,3 @@ def merge_vectors(vectors, path, path_ui, ui_mode):
 		cv.imshow("Path planning", path_ui)
 		cv.waitKey(0)
 	return vectors_merged
-			
-
-
-

@@ -95,15 +95,3 @@ def match_corners(global_corners, local_corners):
 	# Returning the most likely match
 	match_probabilities.sort(key = get_probability, reverse = True)
 	return match_probabilities[0][1]
-
-### ===================================== ###
-# TEST CODE
-
-'''
-global_corners = [[0, 0], [8, 0], [8, 8]]
-local_corners = [[4, 4], [12, 4], [12, 12]]
-
-corner_distribution()
-
-print(match_corners(global_corners, local_corners))
-'''
