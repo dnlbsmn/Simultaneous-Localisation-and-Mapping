@@ -1,4 +1,4 @@
-# Simultaneous-Localisation-and-Mapping
+# SLAM with Short-Weld
 
 ![Image_of_Qbot](images/QBot.jpg)
 
